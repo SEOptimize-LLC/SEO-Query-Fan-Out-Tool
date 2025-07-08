@@ -1,0 +1,42 @@
+# Core dependencies with specific versions that work together
+streamlit==1.29.0
+pandas==2.0.3  # Changed from 2.1.3 for better compatibility
+numpy==1.24.3
+plotly==5.15.0  # Changed from 5.18.0 for better compatibility
+
+# Web scraping and parsing
+requests==2.31.0
+aiohttp==3.8.5  # Changed from 3.9.1 for better compatibility
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# NLP and ML
+spacy==3.6.1  # Changed from 3.7.2 for better compatibility
+scikit-learn==1.3.0  # Changed from 1.3.2
+sentence-transformers==2.2.2
+# spaCy model
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+
+# Google APIs
+google-api-python-client==2.108.0
+google-auth==2.23.4  # Changed from 2.25.2
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# Database and caching
+redis==5.0.1
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# Utilities
+python-dotenv==1.0.0
+validators==0.22.0
+python-dateutil==2.8.2
+
+# Export formats
+openpyxl==3.1.2
+xlsxwriter==3.1.9
+
+# Additional for functionality
+nltk==3.8.1
+prometheus-client==0.19.0
