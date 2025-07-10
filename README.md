@@ -1,257 +1,110 @@
-# Query Fan-Out SEO Analyzer
+# SEO Query Fan-Out Analysis Tool
 
-A comprehensive Streamlit application for analyzing and optimizing content using Google's Query Fan-Out technique for improved SEO performance in AI-powered search results.
+A powerful Streamlit application that analyzes Google Search Console data using the Query Fan-Out methodology to optimize content for Google's AI Mode search.
 
-## 🎯 Features
+## 🚀 Features
 
-- **Sitemap Processing**: Automatically fetch and analyze all URLs from XML sitemaps
-- **Batch Analysis**: Process up to 1,000+ URLs efficiently with rate limiting
-- **Content Analysis**: 
-  - Word count and structure analysis
-  - Heading hierarchy evaluation
-  - Schema markup detection
-  - Readability scoring
-- **Query Prediction**: Generate potential sub-queries based on content
-- **Google Search Console Integration**: Fetch real query data and performance metrics
-- **Semantic Clustering**: Group similar content for topical authority analysis
-- **Actionable Insights**: Get specific recommendations for content optimization
-- **Export Options**: Download results in CSV, JSON, or Excel formats
+- **OAuth 2.0 Authentication**: Secure Google account authentication (no API keys needed from users)
+- **Google Search Console Integration**: Direct access to your search query data
+- **Query Fan-Out Analysis**: AI-powered analysis using Google's Gemini to predict query expansions
+- **Content Gap Identification**: Discover missing content opportunities
+- **AI Mode Optimization**: Recommendations specifically for Google's AI-powered search
+- **Export Functionality**: Download analysis reports in Markdown format
 
-## 📋 Prerequisites
+## 🛠️ Setup Instructions
 
-- Python 3.8 or higher
-- Google Search Console API access (optional but recommended)
-- Sufficient RAM (4-8GB recommended for processing 1,000 URLs)
+### 1. Google Cloud Console Setup
 
-## 🚀 Quick Start
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the **Google Search Console API**:
+   - Navigate to "APIs & Services" > "Library"
+   - Search for "Google Search Console API"
+   - Click "Enable"
 
-### 1. Clone the repository
+### 2. Create OAuth 2.0 Credentials
 
-```bash
-git clone https://github.com/yourusername/query-fanout-analyzer.git
-cd query-fanout-analyzer
-```
+1. Go to "APIs & Services" > "Credentials"
+2. Click "Create Credentials" > "OAuth 2.0 Client ID"
+3. Configure the consent screen if prompted
+4. Choose "Web application" as the application type
+5. Add authorized redirect URIs:
+   - For local testing: `http://localhost:8501`
+   - For Streamlit Cloud: `https://your-app-name.streamlit.app`
+6. Download the credentials JSON file
 
-### 2. Install dependencies
+### 3. Get Gemini API Key
 
-```bash
-pip install -r requirements.txt
-```
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Save it securely
 
-### 3. Set up environment variables
+### 4. Deploy on Streamlit Cloud
 
-Copy the `.env.example` file to `.env` and fill in your API keys:
+1. Fork or clone this repository
+2. Connect your GitHub repo to Streamlit Cloud
+3. Add secrets in Streamlit Cloud dashboard:
+   ```toml
+   GOOGLE_CLIENT_ID = "your-client-id.apps.googleusercontent.com"
+   GOOGLE_CLIENT_SECRET = "your-client-secret"
+   REDIRECT_URI = "https://your-app-name.streamlit.app"
+   GEMINI_API_KEY = "your-gemini-api-key"
+   ```
 
-```bash
-cp .env.example .env
-```
+### 5. Local Development
 
-Edit `.env` with your credentials:
-```
-GOOGLE_API_KEY=your_api_key_here
-GSC_CREDENTIALS_PATH=path/to/credentials.json
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SEOptimize-LLC/SEO-Query-Fan-Out-Tool.git
+   cd SEO-Query-Fan-Out-Tool
+   ```
 
-### 4. Download spaCy language model
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-python -m spacy download en_core_web_sm
-```
+3. Create `.streamlit/secrets.toml` file with your credentials
 
-### 5. Run the application
+4. Run the app:
+   ```bash
+   streamlit run streamlit_app.py
+   ```
 
-```bash
-streamlit run app.py
-```
+## 📊 How It Works
 
-The app will open in your browser at `http://localhost:8501`
+1. **Authentication**: Users authenticate with their Google account
+2. **Property Selection**: Choose from verified Google Search Console properties
+3. **Data Fetching**: Retrieve search query data for analysis
+4. **Query Fan-Out Analysis**: AI analyzes queries to predict:
+   - Sub-queries Google AI might generate
+   - Content gaps and opportunities
+   - Semantic relationships between queries
+5. **Recommendations**: Get actionable content optimization suggestions
 
-## 🔧 Configuration
+## 🔍 Query Fan-Out Methodology
 
-### Google Search Console Setup
+Query Fan-Out is Google's approach to AI-powered search where:
+- A single query is expanded into multiple related sub-queries
+- Content is evaluated at the passage level
+- Semantic coverage matters more than keyword density
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable the Search Console API
-4. Create a service account and download credentials
-5. Add the service account email to your GSC property with "Read" permissions
-6. Place the credentials JSON file in your project and update `.env`
-
-### Advanced Settings
-
-Edit `config.py` to customize:
-- Batch sizes and rate limits
-- Content analysis thresholds
-- Clustering parameters
-- Export settings
-
-## 📊 Usage Guide
-
-### 1. Input Methods
-
-**Sitemap URL** (Recommended for full site analysis):
-```
-https://example.com/sitemap.xml
-```
-
-**CSV Upload**: 
-- Must contain a column named 'url' or 'URL'
-- Additional columns will be preserved
-
-**Manual URLs**:
-- Enter one URL per line
-- Useful for testing specific pages
-
-### 2. Analysis Process
-
-1. **Content Fetching**: Downloads and parses HTML content
-2. **Structure Analysis**: Evaluates headings, paragraphs, lists
-3. **Query Prediction**: Generates potential search queries
-4. **Coverage Scoring**: Calculates optimization score (0-1)
-5. **GSC Integration**: Fetches real search performance data
-
-### 3. Understanding Results
-
-**Coverage Score Components**:
-- Content length (20%)
-- Structure quality (25%)
-- Technical SEO (15%)
-- Readability (20%)
-- Semantic coverage (20%)
-
-**Key Metrics**:
-- **Word Count**: Aim for 1,000-1,500 minimum
-- **H2 Count**: At least 5 for good structure
-- **Schema Markup**: Required for rich snippets
-- **Query Diversity**: More unique queries = better coverage
-
-### 4. Taking Action
-
-**High Priority Issues**:
-- Pages with coverage score < 0.5
-- Content under 500 words
-- Missing schema markup
-- Poor heading structure
-
-**Optimization Steps**:
-1. Expand thin content
-2. Add relevant subheadings
-3. Implement schema markup
-4. Improve meta descriptions
-5. Target query variations
-
-## 🏗️ Architecture
-
-```
-query-fanout-analyzer/
-├── app.py                 # Main Streamlit application
-├── utils.py              # Utility functions and classes
-├── gsc_integration.py    # Google Search Console integration
-├── config.py             # Configuration settings
-├── requirements.txt      # Python dependencies
-├── .env.example         # Environment variables template
-└── README.md            # This file
-```
-
-## 🚀 Deployment
-
-### Streamlit Cloud
-
-1. Push code to GitHub
-2. Connect repository to [Streamlit Cloud](https://streamlit.io/cloud)
-3. Set environment variables in Streamlit settings
-4. Deploy!
-
-### Local Deployment
-
-For production use:
-
-```bash
-# Install production server
-pip install gunicorn
-
-# Run with gunicorn
-gunicorn app:server --bind 0.0.0.0:8000
-```
-
-### Docker Deployment
-
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8501
-
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-```
-
-## 📈 Performance Optimization
-
-### For Large-Scale Analysis
-
-1. **Batch Processing**: Adjust batch size based on server capacity
-2. **Caching**: Enable Redis for improved performance
-3. **Async Processing**: Built-in async support for concurrent requests
-4. **Rate Limiting**: Automatic throttling to respect API limits
-
-### Memory Management
-
-- Processes URLs in chunks
-- Clears memory between batches
-- Efficient data structures for large datasets
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Rate limit exceeded"**
-- Reduce batch size in settings
-- Add delays between requests
-- Check API quotas
-
-**"Memory error"**
-- Process fewer URLs at once
-- Increase server RAM
-- Enable result streaming
-
-**"Connection timeout"**
-- Check internet connectivity
-- Verify URL accessibility
-- Increase timeout in config
+This tool helps you understand and optimize for this new search paradigm.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgments
 
-- Based on Google's Query Fan-Out patent and research
-- Inspired by the SEO community's work on AI search optimization
-- Built with Streamlit for easy deployment and usage
-
-## 📞 Support
-
-For issues and questions:
-- Open an issue on GitHub
-- Check existing documentation
-- Review the troubleshooting guide
+- Built with [Streamlit](https://streamlit.io/)
+- Powered by [Google's Gemini AI](https://deepmind.google/technologies/gemini/)
+- Inspired by the SEO community's research on AI Mode optimization
 
 ---
 
-**Note**: This tool is for SEO analysis and optimization. Always follow Google's webmaster guidelines and focus on creating high-quality, user-first content.
+**Note**: This tool requires valid Google Search Console access and appropriate API credentials. Ensure you have the necessary permissions for the properties you want to analyze.
