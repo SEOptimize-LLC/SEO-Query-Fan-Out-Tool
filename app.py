@@ -31,9 +31,15 @@ if 'mode' not in st.session_state:
 
 # Title and description
 st.title("🔍 Query Fan-Out Analysis Tool")
+
+# Show current optimization target
+if 'ai_search_type' in locals():
+    target_badge = "🔍 AI Overviews" if ai_search_type == "ai_overviews" else "🧠 AI Mode"
+    st.markdown(f"**Optimizing for:** {target_badge}")
+
 st.markdown("""
 Analyze search queries using AI-powered Query Fan-Out methodology to optimize 
-content for Google's AI Mode search.
+content for Google's AI Mode search and AI Overviews.
 """)
 
 # Mode selection
@@ -147,6 +153,20 @@ with st.sidebar:
     # Common settings for both modes
     st.subheader("🎯 Query Fan-Out Settings")
     
+    # AI Search Type Selection
+    ai_search_type = st.radio(
+        "Target AI Search Type:",
+        options=["ai_overviews", "ai_mode"],
+        format_func=lambda x: {
+            'ai_overviews': '🔍 AI Overviews (Simple) - Quick answers & featured snippets',
+            'ai_mode': '🧠 AI Mode (Complex) - Full query fan-out & multi-step research'
+        }[x],
+        help="""
+        **AI Overviews**: Optimizes for quick, direct answers that appear at the top of search results
+        **AI Mode**: Optimizes for complex query expansions and multi-step research journeys
+        """
+    )
+    
     analysis_depth = st.select_slider(
         "Analysis Depth",
         options=["Basic", "Standard", "Comprehensive"],
@@ -163,6 +183,14 @@ with st.sidebar:
     
     include_schema = st.checkbox("Include Schema recommendations", value=True)
     include_competitors = st.checkbox("Include competitive analysis", value=False)
+    
+    # Additional options based on AI search type
+    if ai_search_type == "ai_mode":
+        include_followup = st.checkbox("Include follow-up query predictions", value=True)
+        include_entity_mapping = st.checkbox("Include entity relationship mapping", value=True)
+    else:
+        include_snippet_optimization = st.checkbox("Include snippet optimization tips", value=True)
+        include_paa_optimization = st.checkbox("Include People Also Ask optimization", value=True)
     
     if st.session_state.mode == 'gsc':
         # Brand filtering for GSC mode
@@ -241,7 +269,12 @@ semantic SEO for AI""",
                 'depth': analysis_depth,
                 'include_schema': include_schema,
                 'include_competitors': include_competitors,
-                'mode': 'manual'
+                'mode': 'manual',
+                'ai_search_type': ai_search_type,
+                'include_followup': include_followup if ai_search_type == "ai_mode" else False,
+                'include_entity_mapping': include_entity_mapping if ai_search_type == "ai_mode" else False,
+                'include_snippet_optimization': include_snippet_optimization if ai_search_type == "ai_overviews" else False,
+                'include_paa_optimization': include_paa_optimization if ai_search_type == "ai_overviews" else False
             }
             
             # Create a simple DataFrame for consistency
@@ -430,7 +463,12 @@ elif st.session_state.mode == 'gsc':
                         'include_schema': include_schema,
                         'include_competitors': include_competitors,
                         'depth': analysis_depth,
-                        'mode': 'gsc'
+                        'mode': 'gsc',
+                        'ai_search_type': ai_search_type,
+                        'include_followup': include_followup if ai_search_type == "ai_mode" else False,
+                        'include_entity_mapping': include_entity_mapping if ai_search_type == "ai_mode" else False,
+                        'include_snippet_optimization': include_snippet_optimization if ai_search_type == "ai_overviews" else False,
+                        'include_paa_optimization': include_paa_optimization if ai_search_type == "ai_overviews" else False
                     }
                     
                     with st.spinner("Analyzing queries with Gemini AI..."):
