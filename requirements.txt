@@ -1,26 +1,9 @@
-# Core dependencies
-streamlit
-pandas
-numpy
-plotly
-
-# Web scraping and parsing
-requests
-beautifulsoup4
-lxml
-
-# For async functionality
-aiohttp
-
-# Google APIs (optional - comment out if not using GSC)
-google-api-python-client
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-
-# Basic utilities
-python-dotenv
-
-# Export formats
-openpyxl
-xlsxwriter
+streamlit>=1.28.0
+pandas>=2.0.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+google-api-python-client>=2.100.0
+google-generativeai>=0.3.0
+numpy>=1.24.0
+python-dateutil>=2.8.0
