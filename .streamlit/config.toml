@@ -1,19 +1,12 @@
-[theme]
-primaryColor = "#4CAF50"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
-font = "sans serif"
+# Example secrets.toml file for Streamlit deployment
+# Copy this to .streamlit/secrets.toml and fill in your values
 
-[server]
-maxUploadSize = 200
-maxMessageSize = 200
+# Google OAuth 2.0 Credentials
+GOOGLE_CLIENT_ID = "your-client-id-here.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "your-client-secret-here"
 
-[browser]
-gatherUsageStats = false
+# Redirect URI for your deployed app
+REDIRECT_URI = "https://your-app-name.streamlit.app"
 
-[runner]
-magicEnabled = false
-
-[client]
-showErrorDetails = true
+# Gemini API Key (optional - users can still input manually)
+GEMINI_API_KEY = "your-gemini-api-key-here"
