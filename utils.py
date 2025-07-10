@@ -1,89 +1,76 @@
 """
-Utility functions for Query Fan-Out SEO Analyzer
+Simplified utility functions for Query Fan-Out SEO Analyzer
+Works without heavy ML dependencies but keeps core functionality
 """
 
 import re
-import hashlib
-from typing import List, Dict, Any, Optional, Tuple
-from urllib.parse import urlparse, urljoin
+from typing import List, Dict, Any, Optional
+from urllib.parse import urlparse
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.cluster import DBSCAN, KMeans
-import spacy
 from collections import Counter
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 import pandas as pd
 
-# Load spaCy model (download with: python -m spacy download en_core_web_sm)
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    import subprocess
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
-
 class ContentAnalyzer:
-    """Advanced content analysis for SEO optimization"""
+    """Simplified content analysis for SEO optimization"""
     
     def __init__(self):
-        self.sentence_model = None
-        self.tfidf_vectorizer = TfidfVectorizer(
-            max_features=1000,
-            stop_words='english',
-            ngram_range=(1, 2)
-        )
+        self.stop_words = set(['the', 'is', 'at', 'which', 'on', 'a', 'an', 'as', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'them', 'their', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'some', 'any', 'few', 'many', 'much', 'most', 'other', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once'])
     
     def extract_entities(self, text: str) -> List[Dict[str, str]]:
-        """Simple entity extraction using regex patterns"""
+        """Simple entity extraction using capitalized words"""
         entities = []
         
-        # Extract capitalized words as potential entities
-        capitalized_pattern = r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b'
-        matches = re.findall(capitalized_pattern, text)
+        # Find capitalized sequences (potential entities)
+        words = text.split()
+        i = 0
+        while i < len(words):
+            if words[i][0].isupper() and words[i].lower() not in self.stop_words:
+                entity = words[i]
+                j = i + 1
+                # Collect consecutive capitalized words
+                while j < len(words) and words[j][0].isupper():
+                    entity += ' ' + words[j]
+                    j += 1
+                
+                if len(entity) > 2:  # Skip single letters
+                    entities.append({
+                        'text': entity,
+                        'label': 'ENTITY',
+                        'start': text.find(entity),
+                        'end': text.find(entity) + len(entity)
+                    })
+                i = j
+            else:
+                i += 1
         
-        for match in matches:
-            if len(match) > 2:  # Skip short matches
-                entities.append({
-                    'text': match,
-                    'label': 'ENTITY',
-                    'start': text.find(match),
-                    'end': text.find(match) + len(match)
-                })
-        
-        return entities[:20]  # Limit to top 20 entities
+        return entities[:20]  # Return top 20 entities
     
     def calculate_readability_scores(self, text: str) -> Dict[str, float]:
-        """Calculate basic readability scores"""
-        sentences = [s.strip() for s in text.split('.') if s.strip()]
+        """Calculate basic readability metrics"""
+        sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
         words = text.split()
         
-        # Basic metrics
-        num_sentences = len(sentences)
-        num_words = len(words)
-        
-        if num_sentences == 0 or num_words == 0:
+        if not sentences or not words:
             return {
                 'avg_words_per_sentence': 0,
                 'avg_word_length': 0,
                 'complexity_score': 0
             }
         
-        # Calculate averages
-        avg_words_per_sentence = num_words / num_sentences
-        avg_word_length = sum(len(word) for word in words) / num_words
+        avg_words_per_sentence = len(words) / len(sentences)
+        avg_word_length = sum(len(word) for word in words) / len(words)
         
-        # Simple complexity score
+        # Simple complexity score based on long words
         long_words = len([w for w in words if len(w) > 6])
-        complexity_score = (long_words / num_words) * 100 if num_words > 0 else 0
+        complexity_score = (long_words / len(words)) * 100
         
         return {
-            'avg_words_per_sentence': avg_words_per_sentence,
-            'avg_word_length': avg_word_length,
-            'complexity_score': complexity_score
+            'avg_words_per_sentence': round(avg_words_per_sentence, 2),
+            'avg_word_length': round(avg_word_length, 2),
+            'complexity_score': round(complexity_score, 2)
         }
     
     def extract_content_chunks(self, html_content: str) -> List[Dict[str, Any]]:
@@ -95,7 +82,7 @@ class ContentAnalyzer:
         for script in soup(["script", "style"]):
             script.decompose()
         
-        # Extract main content areas
+        # Extract text from different elements
         for tag in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']):
             text = tag.get_text(strip=True)
             if len(text) > 20:  # Minimum chunk size
@@ -107,37 +94,6 @@ class ContentAnalyzer:
                 })
         
         return chunks
-    
-    def calculate_semantic_similarity(self, texts: List[str]) -> np.ndarray:
-        """Calculate semantic similarity between texts"""
-        if not self.sentence_model:
-            self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        embeddings = self.sentence_model.encode(texts)
-        similarity_matrix = cosine_similarity(embeddings)
-        
-        return similarity_matrix
-    
-    def cluster_content(self, texts: List[str], method: str = 'dbscan') -> List[int]:
-        """Cluster content using semantic similarity"""
-        if not texts:
-            return []
-        
-        # Get embeddings
-        if not self.sentence_model:
-            self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        embeddings = self.sentence_model.encode(texts)
-        
-        if method == 'dbscan':
-            clustering = DBSCAN(eps=0.3, min_samples=2, metric='cosine')
-            labels = clustering.fit_predict(embeddings)
-        else:  # kmeans
-            n_clusters = min(5, len(texts) // 10)  # Adaptive cluster count
-            clustering = KMeans(n_clusters=n_clusters, random_state=42)
-            labels = clustering.fit_predict(embeddings)
-        
-        return labels.tolist()
     
     def generate_query_variations(self, base_query: str, variation_types: List[str]) -> List[str]:
         """Generate query variations based on patterns"""
@@ -274,14 +230,11 @@ class URLProcessor:
     @staticmethod
     def normalize_url(url: str) -> str:
         """Normalize URL for consistency"""
-        # Add protocol if missing
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
         
-        # Remove trailing slash
         url = url.rstrip('/')
         
-        # Parse and reconstruct
         parsed = urlparse(url)
         normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         if parsed.query:
@@ -331,12 +284,9 @@ def export_to_excel(dataframe: pd.DataFrame, filename: str) -> bytes:
     
     output = BytesIO()
     
-    # Use xlsxwriter engine
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # Write dataframe
         dataframe.to_excel(writer, sheet_name='Analysis Results', index=False)
         
-        # Get workbook and worksheet
         workbook = writer.book
         worksheet = writer.sheets['Analysis Results']
         
@@ -355,7 +305,7 @@ def export_to_excel(dataframe: pd.DataFrame, filename: str) -> bytes:
         # Auto-fit columns
         for i, col in enumerate(dataframe.columns):
             column_width = max(dataframe[col].astype(str).map(len).max(), len(col)) + 2
-            worksheet.set_column(i, i, min(column_width, 50))  # Max width 50
+            worksheet.set_column(i, i, min(column_width, 50))
     
     output.seek(0)
     return output.read()
@@ -364,7 +314,6 @@ def generate_recommendations(analysis_results: List[Dict[str, Any]]) -> List[Dic
     """Generate actionable SEO recommendations based on analysis"""
     recommendations = []
     
-    # Convert to DataFrame for easier analysis
     df = pd.DataFrame(analysis_results)
     success_df = df[df['status'] == 'success']
     
@@ -402,17 +351,6 @@ def generate_recommendations(analysis_results: List[Dict[str, Any]]) -> List[Dic
             'issue': f'{len(no_schema_pages)} pages lack schema markup',
             'recommendation': 'Implement appropriate schema.org markup',
             'impact': 'Enhances rich snippet eligibility and search visibility'
-        })
-    
-    # Coverage score recommendations
-    low_coverage = success_df[success_df.get('coverage_score', 0) < 0.5]
-    if len(low_coverage) > 0:
-        recommendations.append({
-            'category': 'Content Quality',
-            'priority': 'High',
-            'issue': f'{len(low_coverage)} pages have low coverage scores',
-            'recommendation': 'Improve content comprehensiveness and topical coverage',
-            'impact': 'Critical for query fan-out optimization'
         })
     
     return recommendations
