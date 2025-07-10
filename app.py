@@ -83,14 +83,8 @@ with st.sidebar:
     # Analysis parameters
     st.subheader("Analysis Parameters")
     days_back = st.slider("Days of data to analyze", 7, 90, 30)
-    min_impressions = st.number_input("Minimum impressions", 10, 1000, 50)
     
-    # Query Fan-Out settings
-    st.subheader("Query Fan-Out Settings")
-    max_queries = st.slider("Max queries to analyze", 10, 100, 20)
-    include_branded = st.checkbox("Include branded queries", value=False)
-    
-    # Sorting preference
+    # Data Sorting Preference (moved up)
     st.subheader("Data Sorting Preference")
     sort_metric = st.radio(
         "Sort queries by:",
@@ -98,6 +92,26 @@ with st.sidebar:
         index=0,  # Default to clicks
         help="Choose which metric to prioritize when selecting top queries"
     )
+    
+    # Dynamic filter based on selected metric
+    if sort_metric == "clicks":
+        min_value = st.number_input("Minimum clicks", 1, 100, 5)
+        filter_column = "clicks"
+    elif sort_metric == "impressions":
+        min_value = st.number_input("Minimum impressions", 10, 1000, 50)
+        filter_column = "impressions"
+    elif sort_metric == "ctr":
+        min_value = st.slider("Minimum CTR (%)", 0.0, 10.0, 0.5, step=0.1)
+        filter_column = "ctr"
+        min_value = min_value / 100  # Convert percentage to decimal
+    else:  # position
+        min_value = st.slider("Maximum position", 1, 100, 50)
+        filter_column = "position"
+    
+    # Query Fan-Out settings
+    st.subheader("Query Fan-Out Settings")
+    max_queries = st.slider("Max queries to analyze", 10, 100, 20)
+    include_branded = st.checkbox("Include branded queries", value=False)
 
 # Function to get redirect URI
 def get_redirect_uri():
@@ -328,8 +342,14 @@ if authenticate_google():
                     df = get_gsc_data(selected_site, days_back)
                     
                     if df is not None and not df.empty:
-                        # Filter by minimum impressions
-                        df_filtered = df[df['impressions'] >= min_impressions]
+                        # Filter by minimum value based on selected metric
+                        if filter_column == "position":
+                            # For position, filter by maximum (lower is better)
+                            df_filtered = df[df[filter_column] <= min_value]
+                        else:
+                            # For other metrics, filter by minimum
+                            df_filtered = df[df[filter_column] >= min_value]
+                        
                         st.session_state.gsc_data = df_filtered
                         st.success(f"✅ Loaded {len(df_filtered)} queries")
                     else:
