@@ -1,7 +1,2 @@
-build-essential
-cmake
-pkg-config
-libpq-dev
 libxml2-dev
 libxslt-dev
-python3-dev
