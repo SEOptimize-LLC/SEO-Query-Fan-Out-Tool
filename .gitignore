@@ -102,42 +102,22 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# IDEs
+# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Project specific
-*.csv
-*.xlsx
-*.json
-!package.json
-!package-lock.json
-*.log
-*.db
-*.sqlite
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/config.toml
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
+# macOS
+.DS_Store
 
-# API keys and credentials
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# OAuth credentials
 credentials.json
 token.json
-*.key
-*.pem
+*.json
