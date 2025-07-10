@@ -50,12 +50,16 @@ with st.sidebar:
     
     # Check for credentials in Streamlit secrets first
     use_secrets = False
-    if 'GOOGLE_CLIENT_ID' in st.secrets and 'GOOGLE_CLIENT_SECRET' in st.secrets:
-        st.session_state.client_id = st.secrets['GOOGLE_CLIENT_ID']
-        st.session_state.client_secret = st.secrets['GOOGLE_CLIENT_SECRET']
-        use_secrets = True
-        st.success("✅ Using credentials from Streamlit secrets")
-    else:
+    try:
+        if 'GOOGLE_CLIENT_ID' in st.secrets and 'GOOGLE_CLIENT_SECRET' in st.secrets:
+            st.session_state.client_id = st.secrets['GOOGLE_CLIENT_ID']
+            st.session_state.client_secret = st.secrets['GOOGLE_CLIENT_SECRET']
+            use_secrets = True
+            st.success("✅ Using credentials from Streamlit secrets")
+    except:
+        pass
+    
+    if not use_secrets:
         # Option to upload credentials file
         uploaded_file = st.file_uploader("Upload OAuth 2.0 credentials JSON", type=['json'])
         
@@ -67,10 +71,13 @@ with st.sidebar:
     
     # Gemini API Key
     st.subheader("Gemini API Configuration")
-    if 'GEMINI_API_KEY' in st.secrets:
-        gemini_api_key = st.secrets['GEMINI_API_KEY']
-        st.success("✅ Using Gemini API key from secrets")
-    else:
+    try:
+        if 'GEMINI_API_KEY' in st.secrets:
+            gemini_api_key = st.secrets['GEMINI_API_KEY']
+            st.success("✅ Using Gemini API key from secrets")
+        else:
+            gemini_api_key = st.text_input("Gemini API Key", type="password")
+    except:
         gemini_api_key = st.text_input("Gemini API Key", type="password")
     
     # Analysis parameters
@@ -88,8 +95,11 @@ def get_redirect_uri():
     """Get the appropriate redirect URI based on environment"""
     # Check if running on Streamlit Cloud
     if 'STREAMLIT_SHARING_MODE' in os.environ:
-        # Get the app URL from Streamlit
-        return st.secrets.get('REDIRECT_URI', 'https://your-app-name.streamlit.app')
+        # Get the app URL from Streamlit secrets
+        try:
+            return st.secrets.get('REDIRECT_URI', 'https://seo-query-fan-out-tool.streamlit.app')
+        except:
+            return 'https://seo-query-fan-out-tool.streamlit.app'
     else:
         # Local development
         return 'http://localhost:8501'
