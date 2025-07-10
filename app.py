@@ -117,12 +117,15 @@ with st.sidebar:
 def get_redirect_uri():
     """Get the appropriate redirect URI based on environment"""
     # Check if running on Streamlit Cloud
-    if 'STREAMLIT_SHARING_MODE' in os.environ:
-        # Get the app URL from Streamlit secrets
+    # Streamlit Cloud sets specific environment variables
+    if any(key in os.environ for key in ['STREAMLIT_SHARING_MODE', 'STREAMLIT_SERVER_HEADLESS']):
+        # Running on Streamlit Cloud
         try:
+            # First try to get from secrets
             return st.secrets.get('REDIRECT_URI', 'https://seo-query-fan-out-tool.streamlit.app')
         except:
-            return 'https://seo-query-fan-out-tool.streamlit.app'
+            # Fallback to your app URL
+            return 'https://seo-query-fan-out-tool.streamlit.app'  # Update this to your actual app URL
     else:
         # Local development
         return 'http://localhost:8501'
@@ -136,6 +139,11 @@ def authenticate_google():
         return False
     
     redirect_uri = get_redirect_uri()
+    
+    # Debug info (remove in production)
+    with st.expander("🔧 Debug Info", expanded=False):
+        st.write(f"Redirect URI being used: `{redirect_uri}`")
+        st.write(f"Running on Streamlit Cloud: {any(key in os.environ for key in ['STREAMLIT_SHARING_MODE', 'STREAMLIT_SERVER_HEADLESS'])}")
     
     # Create flow instance
     flow = Flow.from_client_config(
