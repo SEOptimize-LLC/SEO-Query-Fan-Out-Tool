@@ -89,6 +89,15 @@ with st.sidebar:
     st.subheader("Query Fan-Out Settings")
     max_queries = st.slider("Max queries to analyze", 10, 100, 20)
     include_branded = st.checkbox("Include branded queries", value=False)
+    
+    # Sorting preference
+    st.subheader("Data Sorting Preference")
+    sort_metric = st.radio(
+        "Sort queries by:",
+        ["clicks", "impressions", "ctr", "position"],
+        index=0,  # Default to clicks
+        help="Choose which metric to prioritize when selecting top queries"
+    )
 
 # Function to get redirect URI
 def get_redirect_uri():
@@ -131,8 +140,8 @@ def authenticate_google():
     flow.redirect_uri = redirect_uri
     
     # Check if we have authorization code in URL
-    query_params = st.experimental_get_query_params()
-    auth_code = query_params.get("code", [None])[0]
+    query_params = st.query_params
+    auth_code = query_params.get("code", None)
     
     if auth_code and not st.session_state.authenticated:
         # Exchange authorization code for credentials
@@ -141,7 +150,7 @@ def authenticate_google():
             st.session_state.credentials = flow.credentials
             st.session_state.authenticated = True
             # Clear the URL parameters
-            st.experimental_set_query_params()
+            st.query_params.clear()
             st.success("✅ Successfully authenticated with Google!")
             st.rerun()
         except Exception as e:
@@ -149,8 +158,12 @@ def authenticate_google():
             return False
     
     elif not st.session_state.authenticated:
-        # Generate authorization URL
-        auth_url, _ = flow.authorization_url(prompt="consent")
+        # Generate authorization URL with prompt to select account
+        auth_url, _ = flow.authorization_url(
+            prompt="select_account",
+            access_type="offline",
+            include_granted_scopes="true"
+        )
         
         st.markdown("### 🔐 Google Authentication Required")
         st.markdown("Click the button below to authenticate with your Google account:")
@@ -211,7 +224,7 @@ def get_gsc_data(site_url, days_back):
         return None
 
 # Function to analyze queries with Gemini using Query Fan-Out methodology
-def analyze_queries_with_gemini(df, api_key, max_queries, include_branded):
+def analyze_queries_with_gemini(df, api_key, max_queries, include_branded, sort_metric):
     """Analyze queries using Gemini API with Query Fan-Out approach"""
     
     if not api_key:
@@ -227,8 +240,13 @@ def analyze_queries_with_gemini(df, api_key, max_queries, include_branded):
         # Simple branded query filter (you can make this more sophisticated)
         df_filtered = df_filtered[~df_filtered['query'].str.contains('your brand|company name', case=False, na=False)]
     
-    # Get top queries by impressions
-    top_queries = df_filtered.nlargest(max_queries, 'impressions')
+    # Get top queries by selected metric
+    if sort_metric == 'position':
+        # For position, lower is better
+        top_queries = df_filtered.nsmallest(max_queries, 'position')
+    else:
+        # For other metrics, higher is better
+        top_queries = df_filtered.nlargest(max_queries, sort_metric)
     
     # Query Fan-Out Analysis Prompt
     prompt = f"""
@@ -340,16 +358,27 @@ if authenticate_google():
             tab1, tab2, tab3 = st.tabs(["Top Queries", "Query Distribution", "Position Analysis"])
             
             with tab1:
+                # Sort by selected metric
+                if sort_metric == 'position':
+                    sorted_data = st.session_state.gsc_data.nsmallest(20, sort_metric)
+                else:
+                    sorted_data = st.session_state.gsc_data.nlargest(20, sort_metric)
+                
+                st.markdown(f"**Top 20 Queries by {sort_metric.upper()}**")
                 st.dataframe(
-                    st.session_state.gsc_data.nlargest(20, 'impressions'),
+                    sorted_data,
                     use_container_width=True
                 )
             
             with tab2:
                 # Simple distribution chart
-                st.bar_chart(
-                    st.session_state.gsc_data.nlargest(15, 'impressions').set_index('query')['impressions']
-                )
+                if sort_metric == 'position':
+                    chart_data = st.session_state.gsc_data.nsmallest(15, sort_metric).set_index('query')[sort_metric]
+                else:
+                    chart_data = st.session_state.gsc_data.nlargest(15, sort_metric).set_index('query')[sort_metric]
+                
+                st.markdown(f"**Query Distribution by {sort_metric.upper()}**")
+                st.bar_chart(chart_data)
             
             with tab3:
                 # Position buckets
@@ -368,7 +397,8 @@ if authenticate_google():
                             st.session_state.gsc_data,
                             gemini_api_key,
                             max_queries,
-                            include_branded
+                            include_branded,
+                            sort_metric
                         )
                         
                         if analysis:
