@@ -104,42 +104,124 @@ class QueryAnalyzer:
         prompt = f"""
         You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
         
-        Analyze these queries for NEW CONTENT CREATION using the Query Fan-Out methodology:
+        OPTIMIZATION TARGET: {{'ai_overviews': 'Google AI Overviews (Simple, direct answers)', 'ai_mode': 'Google AI Mode (Complex query fan-out)'}.get(analysis_settings.get('ai_search_type', 'ai_mode'))}
+        
+        Analyze these queries for NEW CONTENT CREATION:
         
         TARGET QUERIES FOR NEW CONTENT:
         {chr(10).join(f"- {q}" for q in queries_list)}
         
         ANALYSIS DEPTH: {depth_instructions[analysis_settings.get('depth', 'Standard')]}
+        """
         
-        Please provide a comprehensive analysis for creating NEW content:
+        if analysis_settings.get('ai_search_type') == 'ai_overviews':
+            # AI Overviews optimization for new content
+            prompt += """
+        
+        Please provide a content creation strategy for AI OVERVIEWS optimization:
+        
+        1. **DIRECT ANSWER CONTENT STRATEGY**
+           For each target query:
+           - The exact 40-60 word answer to include at the top
+           - Supporting details and context
+           - Definition boxes and quick facts
+           - Scannable format recommendations
+        
+        2. **SNIPPET-FIRST CONTENT ARCHITECTURE**
+           - How to structure content for featured snippets
+           - Paragraph vs. list vs. table format for each query
+           - HTML markup for optimal extraction
+           - Jump links and navigation
+        
+        3. **QUICK ANSWER OPTIMIZATION**
+           - First 100 words optimization for each piece
+           - Clear headers and subheaders
+           - Bulleted lists and numbered steps
+           - Summary boxes and key takeaways
+        
+        4. **SUPPORTING CONTENT ELEMENTS**
+           - FAQs to include
+           - Quick reference sections
+           - Glossary terms
+           - Comparison tables
+        """
+            
+            if analysis_settings.get('include_snippet_optimization'):
+                prompt += """
+        
+        5. **FEATURED SNIPPET TEMPLATES**
+           Provide exact snippet-optimized content for top queries:
+           - Definition snippets (What is...)
+           - List snippets (Types of..., Steps to...)
+           - Table snippets (Comparison, features)
+           - Paragraph snippets (How to..., Why...)
+        """
+        
+        else:
+            # AI Mode optimization for new content (Complex)
+            prompt += """
+        
+        Please provide a comprehensive content strategy for AI MODE optimization:
         
         1. **QUERY FAN-OUT MAPPING FOR NEW CONTENT**
            For each target query:
-           - Identify the primary search intent
-           - List ALL sub-queries Google AI might generate
-           - Related questions users ask in this topic
-           - Semantic variations and long-tail expansions
+           - Primary intent and all sub-intents
+           - Complete list of fan-out queries AI would generate
+           - Multi-step research journeys
            - Entity relationships to establish
         
-        2. **CONTENT ARCHITECTURE RECOMMENDATIONS**
-           - Optimal content structure (single comprehensive guide vs. topic cluster)
-           - Recommended word count and depth for each piece
-           - Section breakdown with H2/H3 structure
-           - Which queries to target on same page vs. separate pages
-           - Internal linking strategy
+        2. **COMPREHENSIVE CONTENT ARCHITECTURE**
+           - Topic cluster structure
+           - Pillar page vs. supporting pages
+           - Content depth requirements (2000-5000+ words)
+           - Semantic coverage checklist
+           - Internal linking blueprint
         
         3. **AI MODE OPTIMIZATION BLUEPRINT**
-           - How to structure content for passage-level extraction
-           - Key entities to define and highlight
-           - Semantic HTML markup recommendations
-           - Content formatting for featured snippets
-           - FAQ sections to include
+           - Passage-level optimization strategy
+           - Entity markup throughout content
+           - Semantic HTML structure
+           - Progressive disclosure techniques
+           - Multi-format content (text, lists, tables, media)
+        """
+            
+            if analysis_settings.get('include_followup'):
+                prompt += """
         
-        4. **TOPICAL AUTHORITY BUILDING**
-           - Supporting content pieces needed
-           - Content hub structure
-           - Knowledge graph optimization
-           - E-E-A-T signals to incorporate
+        4. **FOLLOW-UP QUERY CONTENT MAPPING**
+           - Anticipated user journeys
+           - Next-step content recommendations
+           - Decision trees and flowcharts
+           - Related topics to cover
+           - Cross-linking opportunities
+        """
+            
+            if analysis_settings.get('include_entity_mapping'):
+                prompt += """
+        
+        5. **ENTITY-BASED CONTENT STRATEGY**
+           - Core entities to define and explain
+           - Entity relationship diagrams
+           - Knowledge base structure
+           - Semantic markup plan
+           - Glossary and definition sections
+        """
+        
+        # Common sections for both types
+        prompt += """
+        
+        6. **CONTENT CREATION ROADMAP**
+           Prioritized implementation plan:
+           - Which content to create first
+           - Dependencies and prerequisites
+           - Estimated effort and impact
+           - Publishing schedule
+        
+        7. **SUCCESS METRICS**
+           - Target rankings for each query
+           - Expected CTR improvements
+           - Engagement metrics to track
+           - AI visibility indicators
         """
         
         if analysis_settings.get('include_schema', True):
@@ -196,7 +278,9 @@ class QueryAnalyzer:
         prompt = f"""
         You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
         
-        Analyze these Google Search Console queries and provide a comprehensive Query Fan-Out analysis:
+        OPTIMIZATION TARGET: {{'ai_overviews': 'Google AI Overviews (Simple, direct answers)', 'ai_mode': 'Google AI Mode (Complex query fan-out)'}.get(analysis_settings.get('ai_search_type', 'ai_mode'))}
+        
+        Analyze these Google Search Console queries and provide optimization recommendations:
         
         QUERY PERFORMANCE DATA:
         {query_data}
@@ -204,39 +288,108 @@ class QueryAnalyzer:
         ANALYSIS PARAMETERS:
         - Focus on queries sorted by: {settings.get('sort_metric', 'clicks')}
         - Analysis depth: {settings.get('depth', 'comprehensive')}
+        - AI Search Type: {settings.get('ai_search_type', 'ai_mode')}
+        """
         
-        Please provide a detailed analysis following the Query Fan-Out methodology:
+        if settings.get('ai_search_type') == 'ai_overviews':
+            # AI Overviews optimization (Simple)
+            prompt += """
+        
+        Please provide analysis for AI OVERVIEWS optimization:
+        
+        1. **DIRECT ANSWER OPTIMIZATION**
+           - Which queries need clear, concise answers in the first paragraph
+           - Ideal answer length (40-60 words) for each query
+           - Definition-style formatting recommendations
+           - List and table opportunities
+        
+        2. **SNIPPET OPTIMIZATION STRATEGY**
+           - Featured snippet opportunities for each query
+           - Paragraph vs. list vs. table snippet recommendations
+           - Optimal formatting for quick extraction
+           - Answer box targeting techniques
+        
+        3. **CONTENT STRUCTURE FOR AI OVERVIEWS**
+           - Lead paragraph optimization for each topic
+           - Clear question-answer formatting
+           - Scannable content structure
+           - Bold text and emphasis strategies
+        """
+            
+            if settings.get('include_snippet_optimization'):
+                prompt += """
+        
+        4. **FEATURED SNIPPET TARGETING**
+           - Specific snippet formats for each query type
+           - Character/word count recommendations
+           - HTML markup for better extraction
+           - Common snippet trigger patterns
+        """
+            
+            if settings.get('include_paa_optimization'):
+                prompt += """
+        
+        5. **PEOPLE ALSO ASK OPTIMIZATION**
+           - Related questions to include for each topic
+           - Q&A schema implementation
+           - Accordion/expandable content recommendations
+           - PAA box targeting strategies
+        """
+        
+        else:
+            # AI Mode optimization (Complex)
+            prompt += """
+        
+        Please provide analysis for AI MODE optimization (Complex Query Fan-Out):
         
         1. **PRIMARY ENTITY & INTENT MAPPING**
            - Identify the main ontological entities for each query
            - Classify query intent (informational, transactional, navigational, commercial)
            - Group queries into semantic clusters
+           - Knowledge graph connections
         
         2. **QUERY FAN-OUT PREDICTIONS**
            For each primary query, identify:
-           - Sub-queries that Google AI Mode would likely generate
-           - Related questions users might ask in the same session
+           - ALL sub-queries that Google AI Mode would generate
+           - Multi-step research paths users might follow
            - Contextual expansions and refinements
-           - Entity relationships and knowledge graph connections
+           - Related entity queries
         
-        3. **CONTENT COVERAGE ASSESSMENT**
-           Based on the performance metrics:
-           - Which fan-out queries are likely already covered? (high CTR = good coverage)
-           - Which represent content gaps? (high impressions, low CTR)
-           - Coverage score for each query cluster
+        3. **COMPREHENSIVE CONTENT COVERAGE**
+           - Which fan-out queries need dedicated sections
+           - Content depth requirements for AI Mode
+           - Topic cluster architecture
+           - Semantic completeness scoring
+        """
+            
+            if settings.get('include_followup'):
+                prompt += """
         
-        4. **AI MODE OPTIMIZATION STRATEGY**
-           Specific recommendations for:
-           - Content structure for passage-level extraction
-           - Entity markup and semantic HTML
-           - Internal linking to establish topical authority
-           - Content depth requirements for each cluster
+        4. **FOLLOW-UP QUERY MAPPING**
+           - Predict next queries in user journey
+           - Multi-hop question sequences
+           - Decision tree content structure
+           - Progressive disclosure strategies
+        """
+            
+            if settings.get('include_entity_mapping'):
+                prompt += """
         
-        5. **QUICK WINS vs LONG-TERM OPPORTUNITIES**
+        5. **ENTITY RELATIONSHIP MAPPING**
+           - Core entities and their relationships
+           - Knowledge graph optimization
+           - Entity markup and disambiguation
+           - Semantic triple recommendations
+        """
+        
+        # Common sections for both types
+        prompt += """
+        
+        6. **CONTENT OPTIMIZATION PRIORITIES**
            Based on current performance:
-           - Quick wins: Queries with positions 4-20 (near first page)
-           - Medium-term: High impression, low CTR queries
-           - Long-term: New content for uncovered fan-out queries
+           - Quick wins: Minimal changes for maximum impact
+           - Medium-term: Content additions and restructuring  
+           - Long-term: New content creation needs
         """
         
         # Add optional sections based on settings
