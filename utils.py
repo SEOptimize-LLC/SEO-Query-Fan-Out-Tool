@@ -1,356 +1,263 @@
 """
-Simplified utility functions for Query Fan-Out SEO Analyzer
-Works without heavy ML dependencies but keeps core functionality
+Utility functions for Query Fan-Out Analysis
 """
 
-import re
-from typing import List, Dict, Any, Optional
-from urllib.parse import urlparse
-import numpy as np
-from collections import Counter
-import asyncio
-import aiohttp
-from bs4 import BeautifulSoup
+import streamlit as st
+import google.generativeai as genai
 import pandas as pd
+from datetime import datetime
+import re
+from config import Config
 
-class ContentAnalyzer:
-    """Simplified content analysis for SEO optimization"""
-    
-    def __init__(self):
-        self.stop_words = set(['the', 'is', 'at', 'which', 'on', 'a', 'an', 'as', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'them', 'their', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'some', 'any', 'few', 'many', 'much', 'most', 'other', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once'])
-    
-    def extract_entities(self, text: str) -> List[Dict[str, str]]:
-        """Simple entity extraction using capitalized words"""
-        entities = []
-        
-        # Find capitalized sequences (potential entities)
-        words = text.split()
-        i = 0
-        while i < len(words):
-            if words[i][0].isupper() and words[i].lower() not in self.stop_words:
-                entity = words[i]
-                j = i + 1
-                # Collect consecutive capitalized words
-                while j < len(words) and words[j][0].isupper():
-                    entity += ' ' + words[j]
-                    j += 1
-                
-                if len(entity) > 2:  # Skip single letters
-                    entities.append({
-                        'text': entity,
-                        'label': 'ENTITY',
-                        'start': text.find(entity),
-                        'end': text.find(entity) + len(entity)
-                    })
-                i = j
-            else:
-                i += 1
-        
-        return entities[:20]  # Return top 20 entities
-    
-    def calculate_readability_scores(self, text: str) -> Dict[str, float]:
-        """Calculate basic readability metrics"""
-        sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
-        words = text.split()
-        
-        if not sentences or not words:
-            return {
-                'avg_words_per_sentence': 0,
-                'avg_word_length': 0,
-                'complexity_score': 0
-            }
-        
-        avg_words_per_sentence = len(words) / len(sentences)
-        avg_word_length = sum(len(word) for word in words) / len(words)
-        
-        # Simple complexity score based on long words
-        long_words = len([w for w in words if len(w) > 6])
-        complexity_score = (long_words / len(words)) * 100
-        
-        return {
-            'avg_words_per_sentence': round(avg_words_per_sentence, 2),
-            'avg_word_length': round(avg_word_length, 2),
-            'complexity_score': round(complexity_score, 2)
-        }
-    
-    def extract_content_chunks(self, html_content: str) -> List[Dict[str, Any]]:
-        """Extract content chunks from HTML"""
-        soup = BeautifulSoup(html_content, 'html.parser')
-        chunks = []
-        
-        # Remove script and style elements
-        for script in soup(["script", "style"]):
-            script.decompose()
-        
-        # Extract text from different elements
-        for tag in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']):
-            text = tag.get_text(strip=True)
-            if len(text) > 20:  # Minimum chunk size
-                chunks.append({
-                    'type': tag.name,
-                    'text': text,
-                    'word_count': len(text.split()),
-                    'parent': tag.parent.name if tag.parent else None
-                })
-        
-        return chunks
-    
-    def generate_query_variations(self, base_query: str, variation_types: List[str]) -> List[str]:
-        """Generate query variations based on patterns"""
-        variations = []
-        base_query_lower = base_query.lower().strip()
-        
-        variation_patterns = {
-            'what is': f"what is {base_query_lower}",
-            'how to': f"how to {base_query_lower}",
-            'best': f"best {base_query_lower}",
-            'guide': f"{base_query_lower} guide",
-            'tips': f"{base_query_lower} tips",
-            'tutorial': f"{base_query_lower} tutorial",
-            'examples': f"{base_query_lower} examples",
-            'benefits': f"benefits of {base_query_lower}",
-            'vs': f"{base_query_lower} vs",
-            'review': f"{base_query_lower} review"
-        }
-        
-        for var_type in variation_types:
-            if var_type.lower() in variation_patterns:
-                variations.append(variation_patterns[var_type.lower()])
-        
-        return variations
 
-class SEOScorer:
-    """Calculate SEO scores for content"""
-    
-    def __init__(self):
-        self.ideal_word_count = 1500
-        self.ideal_paragraph_count = 15
-        self.ideal_heading_count = 8
-    
-    def calculate_comprehensive_score(self, content_data: Dict[str, Any]) -> Dict[str, float]:
-        """Calculate comprehensive SEO score with breakdown"""
-        scores = {
-            'content_length_score': self._score_content_length(content_data.get('word_count', 0)),
-            'structure_score': self._score_structure(content_data),
-            'technical_score': self._score_technical(content_data),
-            'readability_score': 0.7,  # Default score
-            'semantic_score': self._score_semantic_coverage(content_data)
-        }
-        
-        # Calculate overall score (weighted average)
-        weights = {
-            'content_length_score': 0.2,
-            'structure_score': 0.25,
-            'technical_score': 0.15,
-            'readability_score': 0.2,
-            'semantic_score': 0.2
-        }
-        
-        overall_score = sum(scores[key] * weights[key] for key in scores)
-        scores['overall_score'] = overall_score
-        
-        return scores
-    
-    def _score_content_length(self, word_count: int) -> float:
-        """Score based on content length"""
-        if word_count >= self.ideal_word_count:
-            return 1.0
-        elif word_count >= 1000:
-            return 0.8 + (word_count - 1000) / 2500
-        elif word_count >= 500:
-            return 0.5 + (word_count - 500) / 1000
-        else:
-            return word_count / 1000
-    
-    def _score_structure(self, content_data: Dict[str, Any]) -> float:
-        """Score based on content structure"""
-        score = 0.0
-        
-        # Heading structure
-        h1_count = content_data.get('h1_count', 0)
-        h2_count = content_data.get('h2_count', 0)
-        
-        if h1_count == 1:
-            score += 0.2
-        if h2_count >= 5:
-            score += 0.3
-        elif h2_count >= 3:
-            score += 0.2
-        
-        # Paragraph structure
-        paragraph_count = content_data.get('paragraph_count', 0)
-        if paragraph_count >= self.ideal_paragraph_count:
-            score += 0.3
-        else:
-            score += 0.3 * (paragraph_count / self.ideal_paragraph_count)
-        
-        # Lists
-        if content_data.get('list_count', 0) >= 2:
-            score += 0.2
-        
-        return min(score, 1.0)
-    
-    def _score_technical(self, content_data: Dict[str, Any]) -> float:
-        """Score technical SEO factors"""
-        score = 0.0
-        
-        # Title tag
-        title_length = len(content_data.get('title', ''))
-        if 30 <= title_length <= 60:
-            score += 0.3
-        elif title_length > 0:
-            score += 0.15
-        
-        # Meta description
-        meta_length = len(content_data.get('meta_description', ''))
-        if 120 <= meta_length <= 160:
-            score += 0.3
-        elif meta_length > 0:
-            score += 0.15
-        
-        # Schema markup
-        if content_data.get('has_schema', False):
-            score += 0.4
-        
-        return score
-    
-    def _score_semantic_coverage(self, content_data: Dict[str, Any]) -> float:
-        """Score semantic coverage based on predicted queries"""
-        predicted_queries = content_data.get('predicted_queries', [])
-        if len(predicted_queries) >= 8:
-            return 0.9
-        elif len(predicted_queries) >= 5:
-            return 0.7
-        else:
-            return 0.5
-
-class URLProcessor:
-    """Process and validate URLs"""
+class QueryAnalyzer:
+    """Handle query analysis and fan-out predictions"""
     
     @staticmethod
-    def normalize_url(url: str) -> str:
-        """Normalize URL for consistency"""
-        if not url.startswith(('http://', 'https://')):
-            url = 'https://' + url
+    def filter_queries(df, min_value, filter_column, include_branded=False, brand_terms=None):
+        """Filter queries based on criteria"""
         
-        url = url.rstrip('/')
+        df_filtered = df.copy()
         
-        parsed = urlparse(url)
-        normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-        if parsed.query:
-            normalized += f"?{parsed.query}"
+        # Apply metric filter
+        if filter_column == "position":
+            # For position, lower is better
+            df_filtered = df_filtered[df_filtered[filter_column] <= min_value]
+        else:
+            # For other metrics, higher is better
+            df_filtered = df_filtered[df_filtered[filter_column] >= min_value]
         
-        return normalized
+        # Filter branded queries if requested
+        if not include_branded and brand_terms:
+            brand_pattern = '|'.join([re.escape(term) for term in brand_terms])
+            df_filtered = df_filtered[~df_filtered['query'].str.contains(brand_pattern, case=False, na=False)]
+        
+        return df_filtered
     
     @staticmethod
-    def get_domain(url: str) -> str:
-        """Extract domain from URL"""
-        parsed = urlparse(url)
-        return parsed.netloc
-    
-    @staticmethod
-    def is_valid_url(url: str) -> bool:
-        """Check if URL is valid"""
+    def analyze_query_fanout(queries_df, api_key, analysis_settings):
+        """
+        Perform Query Fan-Out analysis using Gemini
+        
+        Args:
+            queries_df: DataFrame with query data
+            api_key: Gemini API key
+            analysis_settings: dict with analysis parameters
+        """
+        
+        if not api_key:
+            st.error("Please provide a Gemini API key")
+            return None
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        
+        # Prepare query data
+        max_queries = analysis_settings.get('max_queries', 20)
+        sort_metric = analysis_settings.get('sort_metric', 'clicks')
+        
+        # Sort queries appropriately
+        if sort_metric == 'position':
+            top_queries = queries_df.nsmallest(max_queries, sort_metric)
+        else:
+            top_queries = queries_df.nlargest(max_queries, sort_metric)
+        
+        # Build the analysis prompt
+        prompt = QueryAnalyzer._build_fanout_prompt(top_queries, analysis_settings)
+        
         try:
-            parsed = urlparse(url)
-            return bool(parsed.netloc) and bool(parsed.scheme)
-        except:
-            return False
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            st.error(f"Error during Gemini analysis: {str(e)}")
+            return None
+    
+    @staticmethod
+    def _build_fanout_prompt(queries_df, settings):
+        """Build the prompt for Gemini analysis"""
+        
+        # Format query data
+        query_data = queries_df[['query', 'clicks', 'impressions', 'ctr', 'position']].to_string(index=False)
+        
+        prompt = f"""
+        You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
+        
+        Analyze these Google Search Console queries and provide a comprehensive Query Fan-Out analysis:
+        
+        QUERY PERFORMANCE DATA:
+        {query_data}
+        
+        ANALYSIS PARAMETERS:
+        - Focus on queries sorted by: {settings.get('sort_metric', 'clicks')}
+        - Analysis depth: {settings.get('depth', 'comprehensive')}
+        
+        Please provide a detailed analysis following the Query Fan-Out methodology:
+        
+        1. **PRIMARY ENTITY & INTENT MAPPING**
+           - Identify the main ontological entities for each query
+           - Classify query intent (informational, transactional, navigational, commercial)
+           - Group queries into semantic clusters
+        
+        2. **QUERY FAN-OUT PREDICTIONS**
+           For each primary query, identify:
+           - Sub-queries that Google AI Mode would likely generate
+           - Related questions users might ask in the same session
+           - Contextual expansions and refinements
+           - Entity relationships and knowledge graph connections
+        
+        3. **CONTENT COVERAGE ASSESSMENT**
+           Based on the performance metrics:
+           - Which fan-out queries are likely already covered? (high CTR = good coverage)
+           - Which represent content gaps? (high impressions, low CTR)
+           - Coverage score for each query cluster
+        
+        4. **AI MODE OPTIMIZATION STRATEGY**
+           Specific recommendations for:
+           - Content structure for passage-level extraction
+           - Entity markup and semantic HTML
+           - Internal linking to establish topical authority
+           - Content depth requirements for each cluster
+        
+        5. **QUICK WINS vs LONG-TERM OPPORTUNITIES**
+           Based on current performance:
+           - Quick wins: Queries with positions 4-20 (near first page)
+           - Medium-term: High impression, low CTR queries
+           - Long-term: New content for uncovered fan-out queries
+        """
+        
+        # Add optional sections based on settings
+        if settings.get('include_schema', True):
+            prompt += """
+        
+        6. **SCHEMA MARKUP RECOMMENDATIONS**
+           - Specific schema types for each content piece
+           - Required and recommended properties
+           - How schema enhances AI understanding
+        """
+        
+        if settings.get('include_competitors', False):
+            prompt += """
+        
+        7. **COMPETITIVE LANDSCAPE ANALYSIS**
+           - Likely competitor strategies for these queries
+           - Differentiation opportunities
+           - Content gaps in the market
+        """
+        
+        prompt += """
+        
+        8. **IMPLEMENTATION ROADMAP**
+           Provide a prioritized action plan:
+           - Week 1-2: Immediate optimizations
+           - Month 1: Content updates and additions
+           - Month 2-3: New content creation
+           - Ongoing: Monitoring and iteration
+        
+        Format your response with clear headers, specific examples, and actionable recommendations.
+        Focus on practical implementation rather than theory.
+        """
+        
+        return prompt
+    
+    @staticmethod
+    def export_analysis(analysis_text, queries_df, format='markdown'):
+        """Export analysis in various formats"""
+        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        if format == 'markdown':
+            return f"""# Query Fan-Out Analysis Report
+Generated: {timestamp}
 
-class BatchProcessor:
-    """Handle batch processing with rate limiting"""
-    
-    def __init__(self, rate_limit: int = 10, time_window: int = 1):
-        self.rate_limit = rate_limit
-        self.time_window = time_window
-        self.semaphore = asyncio.Semaphore(rate_limit)
-    
-    async def process_batch(self, items: List[Any], process_func, *args, **kwargs) -> List[Any]:
-        """Process items in batch with rate limiting"""
-        async def process_with_limit(item):
-            async with self.semaphore:
-                result = await process_func(item, *args, **kwargs)
-                await asyncio.sleep(self.time_window / self.rate_limit)
-                return result
-        
-        tasks = [process_with_limit(item) for item in items]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        return results
+## Summary Statistics
+- Total Queries Analyzed: {len(queries_df)}
+- Total Clicks: {queries_df['clicks'].sum():,}
+- Total Impressions: {queries_df['impressions'].sum():,}
+- Average CTR: {queries_df['ctr'].mean():.2%}
+- Average Position: {queries_df['position'].mean():.1f}
 
-def export_to_excel(dataframe: pd.DataFrame, filename: str) -> bytes:
-    """Export DataFrame to Excel with formatting"""
-    from io import BytesIO
-    
-    output = BytesIO()
-    
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        dataframe.to_excel(writer, sheet_name='Analysis Results', index=False)
-        
-        workbook = writer.book
-        worksheet = writer.sheets['Analysis Results']
-        
-        # Add formats
-        header_format = workbook.add_format({
-            'bold': True,
-            'bg_color': '#4CAF50',
-            'font_color': 'white',
-            'border': 1
-        })
-        
-        # Format headers
-        for col_num, value in enumerate(dataframe.columns.values):
-            worksheet.write(0, col_num, value, header_format)
-        
-        # Auto-fit columns
-        for i, col in enumerate(dataframe.columns):
-            column_width = max(dataframe[col].astype(str).map(len).max(), len(col)) + 2
-            worksheet.set_column(i, i, min(column_width, 50))
-    
-    output.seek(0)
-    return output.read()
+## Top Performing Queries
+{queries_df.head(10).to_markdown(index=False)}
 
-def generate_recommendations(analysis_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Generate actionable SEO recommendations based on analysis"""
-    recommendations = []
+## Query Fan-Out Analysis
+{analysis_text}
+
+---
+*Report generated by Query Fan-Out Analysis Tool*
+"""
+        
+        elif format == 'csv':
+            # Return queries with analysis appended
+            queries_export = queries_df.copy()
+            queries_export['analysis_date'] = timestamp
+            return queries_export
+        
+        else:
+            return analysis_text
+
+
+class UIHelpers:
+    """Helper functions for Streamlit UI"""
     
-    df = pd.DataFrame(analysis_results)
-    success_df = df[df['status'] == 'success']
+    @staticmethod
+    def display_metrics(df):
+        """Display summary metrics"""
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Queries", f"{len(df):,}")
+        
+        with col2:
+            st.metric("Total Clicks", f"{df['clicks'].sum():,}")
+        
+        with col3:
+            st.metric("Avg CTR", f"{df['ctr'].mean():.2%}")
+        
+        with col4:
+            st.metric("Avg Position", f"{df['position'].mean():.1f}")
     
-    if success_df.empty:
-        return recommendations
+    @staticmethod
+    def create_position_distribution(df):
+        """Create position distribution chart data"""
+        bins = [0, 3, 10, 20, 50, 100]
+        labels = ['Top 3', 'Page 1 (4-10)', 'Page 2', 'Page 3-5', 'Beyond']
+        
+        df['position_range'] = pd.cut(df['position'], bins=bins, labels=labels, include_lowest=True)
+        return df['position_range'].value_counts().sort_index()
     
-    # Content length recommendations
-    avg_word_count = success_df['word_count'].mean()
-    if avg_word_count < 1000:
-        recommendations.append({
-            'category': 'Content Length',
-            'priority': 'High',
-            'issue': f'Average word count is {avg_word_count:.0f}',
-            'recommendation': 'Expand content to at least 1000-1500 words for better topical coverage',
-            'impact': 'High impact on query coverage and ranking potential'
-        })
-    
-    # Structure recommendations
-    low_structure_pages = success_df[success_df['h2_count'] < 3]
-    if len(low_structure_pages) > len(success_df) * 0.3:
-        recommendations.append({
-            'category': 'Content Structure',
-            'priority': 'Medium',
-            'issue': f'{len(low_structure_pages)} pages lack proper heading structure',
-            'recommendation': 'Add more H2 subheadings to improve content hierarchy',
-            'impact': 'Improves user experience and content scanability'
-        })
-    
-    # Schema recommendations
-    no_schema_pages = success_df[~success_df['has_schema']]
-    if len(no_schema_pages) > 0:
-        recommendations.append({
-            'category': 'Technical SEO',
-            'priority': 'Medium',
-            'issue': f'{len(no_schema_pages)} pages lack schema markup',
-            'recommendation': 'Implement appropriate schema.org markup',
-            'impact': 'Enhances rich snippet eligibility and search visibility'
-        })
-    
-    return recommendations
+    @staticmethod
+    def highlight_opportunities(df):
+        """Identify and highlight optimization opportunities"""
+        opportunities = []
+        
+        # High impressions, low CTR
+        high_imp_low_ctr = df[(df['impressions'] > df['impressions'].quantile(0.7)) & 
+                              (df['ctr'] < df['ctr'].quantile(0.3))]
+        if not high_imp_low_ctr.empty:
+            opportunities.append({
+                'type': 'High Impressions, Low CTR',
+                'queries': high_imp_low_ctr.head(5)['query'].tolist(),
+                'action': 'Improve meta descriptions and title tags'
+            })
+        
+        # Good CTR, poor position
+        good_ctr_poor_pos = df[(df['ctr'] > df['ctr'].quantile(0.7)) & 
+                               (df['position'] > 10)]
+        if not good_ctr_poor_pos.empty:
+            opportunities.append({
+                'type': 'Good CTR, Poor Position',
+                'queries': good_ctr_poor_pos.head(5)['query'].tolist(),
+                'action': 'Boost content quality and internal linking'
+            })
+        
+        # Near first page (positions 11-20)
+        near_first_page = df[(df['position'] > 10) & (df['position'] <= 20)]
+        if not near_first_page.empty:
+            opportunities.append({
+                'type': 'Near First Page',
+                'queries': near_first_page.head(5)['query'].tolist(),
+                'action': 'Quick wins - minor optimizations can push to page 1'
+            })
+        
+        return opportunities
