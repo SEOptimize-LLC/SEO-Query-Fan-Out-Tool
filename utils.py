@@ -74,7 +74,120 @@ class QueryAnalyzer:
             return None
     
     @staticmethod
-    def _build_fanout_prompt(queries_df, settings):
+    def analyze_query_fanout_manual(queries_df, api_key, analysis_settings):
+        """
+        Perform Query Fan-Out analysis for manual queries (new content planning)
+        
+        Args:
+            queries_df: DataFrame with query data
+            api_key: Gemini API key
+            analysis_settings: dict with analysis parameters
+        """
+        
+        if not api_key:
+            st.error("Please provide a Gemini API key")
+            return None
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        
+        # Build the analysis prompt for new content
+        queries_list = queries_df['query'].tolist()
+        
+        depth_instructions = {
+            "Basic": "Provide a concise analysis focusing on the main fan-out queries and content structure.",
+            "Standard": "Provide a detailed analysis including sub-queries, content recommendations, and implementation tips.",
+            "Comprehensive": "Provide an exhaustive analysis including all query expansions, detailed content strategies, technical SEO requirements, and step-by-step implementation guide."
+        }
+        
+        prompt = f"""
+        You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
+        
+        Analyze these queries for NEW CONTENT CREATION using the Query Fan-Out methodology:
+        
+        TARGET QUERIES FOR NEW CONTENT:
+        {chr(10).join(f"- {q}" for q in queries_list)}
+        
+        ANALYSIS DEPTH: {depth_instructions[analysis_settings.get('depth', 'Standard')]}
+        
+        Please provide a comprehensive analysis for creating NEW content:
+        
+        1. **QUERY FAN-OUT MAPPING FOR NEW CONTENT**
+           For each target query:
+           - Identify the primary search intent
+           - List ALL sub-queries Google AI might generate
+           - Related questions users ask in this topic
+           - Semantic variations and long-tail expansions
+           - Entity relationships to establish
+        
+        2. **CONTENT ARCHITECTURE RECOMMENDATIONS**
+           - Optimal content structure (single comprehensive guide vs. topic cluster)
+           - Recommended word count and depth for each piece
+           - Section breakdown with H2/H3 structure
+           - Which queries to target on same page vs. separate pages
+           - Internal linking strategy
+        
+        3. **AI MODE OPTIMIZATION BLUEPRINT**
+           - How to structure content for passage-level extraction
+           - Key entities to define and highlight
+           - Semantic HTML markup recommendations
+           - Content formatting for featured snippets
+           - FAQ sections to include
+        
+        4. **TOPICAL AUTHORITY BUILDING**
+           - Supporting content pieces needed
+           - Content hub structure
+           - Knowledge graph optimization
+           - E-E-A-T signals to incorporate
+        """
+        
+        if analysis_settings.get('include_schema', True):
+            prompt += """
+        
+        5. **SCHEMA MARKUP STRATEGY**
+           - Essential schema types for each content piece
+           - Properties to maximize AI understanding
+           - FAQ, HowTo, and other relevant schemas
+           - Entity markup recommendations
+        """
+        
+        if analysis_settings.get('include_competitors', False):
+            prompt += """
+        
+        6. **COMPETITIVE CONTENT ANALYSIS**
+           - What competitors likely rank for these queries
+           - Content gaps to exploit
+           - Unique angles and differentiation strategies
+           - How to create 10x better content
+        """
+        
+        prompt += """
+        
+        7. **CONTENT CREATION ROADMAP**
+           Provide a prioritized implementation plan:
+           - Which content to create first (quick wins)
+           - Content dependencies and optimal publishing order
+           - Estimated effort and impact for each piece
+           - Success metrics to track
+        
+        8. **CONTENT BRIEF TEMPLATES**
+           For the top 3 priority pieces, provide:
+           - Target keyword cluster
+           - Content outline with word count targets
+           - Key points to cover
+           - Unique value proposition
+        
+        Format your response with clear, actionable recommendations for content creation.
+        Focus on practical implementation for maximum AI search visibility.
+        """
+        
+        try:
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            st.error(f"Error during Gemini analysis: {str(e)}")
+            return None
         """Build the prompt for Gemini analysis"""
         
         # Format query data
