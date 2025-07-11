@@ -51,7 +51,8 @@ class QueryAnalyzer:
         
         # Configure Gemini
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        model_name = settings.get('gemini_model', 'gemini-1.5-flash')
+        model = genai.GenerativeModel(model_name)
         
         # Prepare query data
         max_queries = analysis_settings.get('max_queries', 20)
@@ -90,7 +91,8 @@ class QueryAnalyzer:
         
         # Configure Gemini
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        model_name = analysis_settings.get('gemini_model', 'gemini-1.5-flash')
+        model = genai.GenerativeModel(model_name)
         
         # Build the analysis prompt for new content
         queries_list = queries_df['query'].tolist()
