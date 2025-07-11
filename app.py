@@ -88,6 +88,14 @@ with st.sidebar:
         if override_key:
             gemini_api_key = override_key
     
+    # Model selection
+    gemini_model = st.selectbox(
+        "Gemini Model",
+        options=["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"],
+        index=0,
+        help="Select which Gemini model to use. Flash is faster and cheaper, Pro is more capable."
+    )
+    
     # Analysis settings
     st.subheader("📊 Analysis Settings")
     
@@ -276,7 +284,8 @@ semantic SEO for AI""",
                 'include_followup': include_followup,
                 'include_entity_mapping': include_entity_mapping,
                 'include_snippet_optimization': include_snippet_optimization,
-                'include_paa_optimization': include_paa_optimization
+                'include_paa_optimization': include_paa_optimization,
+                'gemini_model': gemini_model
             }
             
             # Create a simple DataFrame for consistency
@@ -470,7 +479,8 @@ elif st.session_state.mode == 'gsc':
                         'include_followup': include_followup,
                         'include_entity_mapping': include_entity_mapping,
                         'include_snippet_optimization': include_snippet_optimization,
-                        'include_paa_optimization': include_paa_optimization
+                        'include_paa_optimization': include_paa_optimization,
+                        'gemini_model': gemini_model
                     }
                     
                     with st.spinner("Analyzing queries with Gemini AI..."):
