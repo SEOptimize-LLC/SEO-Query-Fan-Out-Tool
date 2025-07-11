@@ -104,62 +104,7 @@ class QueryAnalyzer:
         prompt = f"""
         You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
         
-        ### **Your Role & Expertise**
-        You are a senior SEO strategist and semantic search expert with deep knowledge of:
-        - Google's Query Fan-Out methodology for keyword expansion
-        - Search intent mapping and user behavior patterns
-        - Semantic keyword research and clustering
-        - Predictive search opportunity identification
-        
-        ### **Analysis Objective**
-        Starting with a **single seed query** provided by the user, conduct a comprehensive Query Fan-Out analysis to map all potential keyword variations, semantic expansions, and search opportunities that branch from this core term.
-        
-        ### **Step-by-Step Analysis Framework**
-        
-        #### 1. Seed Query Analysis
-        - **Query classification:** Identify search intent (informational, navigational, commercial, transactional)
-        - **Keyword components:** Break down the query into core terms, modifiers, and context
-        - **Search volume estimation:** Provide realistic traffic potential assessment
-        - **Competition assessment:** Evaluate keyword difficulty and market saturation
-        
-        #### 2. Primary Fan-Out Branches
-        Develop 4-6 main expansion categories:
-        - **Synonym variations:** Alternative phrasings with same intent
-        - **Modifier expansions:** Adding qualifiers (best, top, cheap, near me, etc.)
-        - **Question-based queries:** How, what, why, when, where variations
-        - **Commercial progressions:** From research to purchase intent
-        - **Specificity levels:** Broad to niche variations
-        - **Related topics:** Adjacent subject areas and subtopics
-        
-        #### 3. Secondary Fan-Out Development
-        For each primary branch, create 5-10 specific keyword variations including:
-        - **Long-tail expansions:** 3-5 word variations
-        - **Local variations:** Geographic modifiers
-        - **Temporal modifiers:** Time-sensitive variations
-        - **Demographic targeting:** Audience-specific terms
-        - **Problem-solution mapping:** Pain points to solutions
-        
-        #### 4. Opportunity Matrix Creation
-        Classify each fan-out keyword by:
-        - **Search volume potential:** High, Medium, Low
-        - **Competition level:** Easy, Moderate, Difficult
-        - **Commercial value:** High, Medium, Low
-        - **Content requirements:** Existing page optimization vs. new content needed
-        
-        #### 5. Strategic Recommendations
-        - **Priority clusters:** Top 3-5 keyword groups to target first
-        - **Content strategy:** Recommended page types and content formats
-        - **SEO implementation:** On-page optimization tactics
-        - **Measurement plan:** KPIs to track fan-out success
-        
-        ### **Output Format**
-        1. **Seed Query Overview** (intent, volume estimate, difficulty)
-        2. **Fan-Out Tree Diagram** (hierarchical keyword map)
-        3. **Opportunity Matrix** (table with priority scoring)
-        4. **Implementation Roadmap** (30/60/90-day plan)
-        5. **Content Recommendations** (specific page suggestions)
-        
-        OPTIMIZATION TARGET: {{'ai_overviews': 'Google AI Overviews (Simple, direct answers)', 'ai_mode': 'Google AI Mode (Complex query fan-out)'}.get(analysis_settings.get('ai_search_type', 'ai_mode'))}
+        OPTIMIZATION TARGET: {'Google AI Overviews (Simple, direct answers)' if analysis_settings.get('ai_search_type') == 'ai_overviews' else 'Google AI Mode (Complex query fan-out)'}
         
         Analyze these queries for NEW CONTENT CREATION:
         
@@ -332,80 +277,8 @@ class QueryAnalyzer:
         
         prompt = f"""
         You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
-
-        ### **Your Role & Expertise**
-        You are a senior SEO analyst and data-driven search optimization expert with deep knowledge of:
-        - Google Search Console data interpretation and analysis
-        - Query Fan-Out methodology using real performance data
-        - Organic search metrics optimization
-        - Data-driven keyword opportunity identification
         
-        ### **Analysis Objective**
-        Analyze provided Google Search Console queries using actual organic performance metrics to identify Query Fan-Out opportunities and optimize existing search performance through strategic keyword expansion.
-        
-        ### **Step-by-Step Analysis Framework**
-        
-        #### 1. Data Preparation & Baseline
-        - **Dataset overview:** Total queries, date range, performance summary
-        - **Metric selection:** Confirm primary metric (default: clicks) and secondary metrics
-        - **Data cleaning:** Filter out branded queries, low-impression terms, or other exclusions
-        - **Performance benchmarks:** Establish baseline performance standards
-        
-        #### 2. Core Query Identification
-        Using selected performance metric (clicks):
-        - **Top performers:** Identify 10-15 highest-performing queries
-        - **Query clustering:** Group related searches by semantic similarity
-        - **Performance patterns:** Analyze CTR, position, and impression trends
-        - **Underperformers:** Highlight high-impression, low-click opportunities
-        
-        #### 3. Performance-Based Fan-Out Mapping
-        For each core query cluster:
-        - **Variation analysis:** Identify existing query variations in the data
-        - **Performance gaps:** Find related queries with different performance levels
-        - **Click distribution:** Analyze how clicks spread across query variations
-        - **Position opportunities:** Identify queries ranking 4-10 with fan-out potential
-        
-        #### 4. Opportunity Prioritization
-        Rank fan-out opportunities using:
-        - **Current performance:** Existing clicks, impressions, CTR
-        - **Growth potential:** Estimated traffic increase from optimization
-        - **Quick wins:** High-impression, low-CTR queries ready for improvement
-        - **Content gaps:** Missing variations with search demand
-        
-        #### 5. Data-Driven Recommendations
-        - **Page optimization:** Specific pages to update based on query clusters
-        - **Content expansion:** New content needed for uncovered fan-out branches
-        - **Technical improvements:** Site structure changes to support query clustering
-        - **Performance tracking:** Metric-specific monitoring and reporting setup
-        
-        ### **Configuration Options**
-        **Primary Metric Selection:**
-        - **Clicks** (default): Focus on traffic generation
-        - **Impressions**: Emphasize visibility and reach expansion
-        - **CTR**: Optimize for click-through performance
-        - **Position**: Target ranking improvements
-        
-        **Analysis Filters:**
-        - Date range selection
-        - Query inclusion/exclusion criteria
-        - Minimum performance thresholds
-        - Device/location segmentation
-        
-        ### **Output Format**
-        1. **Performance Executive Summary** (key metrics and trends)
-        2. **Query Cluster Analysis** (grouped by performance and theme)
-        3. **Fan-Out Opportunity Matrix** (data-driven priority scoring)
-        4. **Performance Gap Analysis** (underperforming variations)
-        5. **Optimization Roadmap** (metric-specific improvement plan)
-        6. **Tracking Dashboard** (recommended monitoring setup)
-        
-        ### **Required Data Input**
-        - Google Search Console query export (CSV format)
-        - Preferred analysis metric (clicks, impressions, CTR, position)
-        - Analysis date range
-        - Any exclusion criteria or filters.
-        
-        OPTIMIZATION TARGET: {{'ai_overviews': 'Google AI Overviews (Simple, direct answers)', 'ai_mode': 'Google AI Mode (Complex query fan-out)'}.get(analysis_settings.get('ai_search_type', 'ai_mode'))}
+        OPTIMIZATION TARGET: {'Google AI Overviews (Simple, direct answers)' if settings.get('ai_search_type') == 'ai_overviews' else 'Google AI Mode (Complex query fan-out)'}
         
         Analyze these Google Search Console queries and provide optimization recommendations:
         
