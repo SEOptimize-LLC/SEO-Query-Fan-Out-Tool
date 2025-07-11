@@ -29,10 +29,16 @@ class GSCAuth:
         redirect_uri = Config.get_redirect_uri()
         
         # Debug info
-        with st.expander("🔧 OAuth Debug Info", expanded=False):
-            st.write(f"**Redirect URI:** `{redirect_uri}`")
-            st.write(f"**Client ID:** `{client_id[:20]}...`")
-            st.write("Make sure this redirect URI is added to your Google Cloud Console OAuth settings!")
+        with st.expander("🔧 OAuth Debug Info", expanded=True):
+            st.write(f"**Redirect URI being used:** `{redirect_uri}`")
+            st.write(f"**Client ID:** `{client_id[:30]}...` (truncated for security)")
+            st.info("**Important:** This exact redirect URI must be added to your Google Cloud Console OAuth settings!")
+            st.write("**To fix authentication issues:**")
+            st.write("1. Copy the redirect URI above")
+            st.write("2. Go to Google Cloud Console → APIs & Services → Credentials")
+            st.write("3. Edit your OAuth 2.0 Client ID")
+            st.write("4. Add this exact URI to 'Authorized redirect URIs'")
+            st.write("5. Save and try again")
         
         # Create flow
         flow = Flow.from_client_config(
@@ -83,27 +89,42 @@ class GSCAuth:
             st.markdown("### 🔐 Google Authentication Required")
             st.markdown("Click the button below to authenticate with your Google Search Console account:")
             
-            # Use a button with link
+            # Create a more prominent button that opens in a new tab
             st.markdown(
                 f"""
-                <a href="{auth_url}" target="_self">
+                <a href="{auth_url}" target="_blank" style="text-decoration: none;">
                     <button style="
                         background-color: #4285F4;
                         color: white;
-                        padding: 10px 20px;
+                        padding: 12px 24px;
                         border: none;
                         border-radius: 4px;
                         cursor: pointer;
                         font-size: 16px;
+                        font-weight: 500;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        margin: 10px 0;
                     ">
-                        🔗 Sign in with Google
+                        <svg width="18" height="18" viewBox="0 0 48 48" style="display: inline;">
+                            <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
+                            <path fill="#34A853" d="M6.3 14.7l7 5.1C15 16 19.1 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 15.4 2 7.9 6.7 4.6 13.5l1.7 1.2z"/>
+                            <path fill="#FBBC05" d="M24 46c5.4 0 10.2-1.8 14-5.1l-6.8-5.7C29.1 36.4 26.7 37 24 37c-6 0-10.5-3-12.2-8.3l-7.3 5.6C7.9 41.2 15.4 46 24 46z"/>
+                            <path fill="#EA4335" d="M44.5 20H24v8.5h11.8C34.9 31.7 32.5 34.2 29.2 35.2l6.8 5.7c3.9-3.6 6.5-8.8 6.5-14.9 0-1.3-.2-2.7-.5-4z"/>
+                        </svg>
+                        Sign in with Google
                     </button>
                 </a>
                 """,
                 unsafe_allow_html=True
             )
             
-            st.info("ℹ️ You'll be redirected back here after authentication")
+            st.info("ℹ️ Opens in a new tab. After authentication, return to this tab and the app will update automatically.")
+            
+            # Add manual refresh button in case auto-refresh fails
+            if st.button("🔄 Check Authentication Status"):
+                st.rerun()
             return False
         
         return True
