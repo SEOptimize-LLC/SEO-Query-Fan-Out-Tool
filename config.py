@@ -8,6 +8,45 @@ import streamlit as st
 class Config:
     """Configuration management for the app"""
     
+    @staticmethod
+    def get_gemini_api_key():
+        """Get Gemini API key from secrets or environment"""
+        try:
+            if 'GEMINI_API_KEY' in st.secrets:
+                return st.secrets['GEMINI_API_KEY']
+        except:
+            pass
+        return os.getenv('GEMINI_API_KEY', '')
+    
+    @staticmethod
+    def get_openai_api_key():
+        """Get OpenAI API key from secrets or environment"""
+        try:
+            if 'OPENAI_API_KEY' in st.secrets:
+                return st.secrets['OPENAI_API_KEY']
+        except:
+            pass
+        return os.getenv('OPENAI_API_KEY', '')
+    
+    @staticmethod
+    def get_anthropic_api_key():
+        """Get Anthropic API key from secrets or environment"""
+        try:
+            if 'ANTHROPIC_API_KEY' in st.secrets:
+                return st.secrets['ANTHROPIC_API_KEY']
+        except:
+            pass
+        return os.getenv('ANTHROPIC_API_KEY', '')
+    
+    @staticmethod
+    def get_all_api_keys():
+        """Get all configured API keys"""
+        return {
+            'gemini': Config.get_gemini_api_key(),
+            'openai': Config.get_openai_api_key(),
+            'anthropic': Config.get_anthropic_api_key()
+        }
+    
     # Model configurations - focused on best reasoning/thinking models
     AI_MODELS = {
         'gemini': {
@@ -55,8 +94,8 @@ class Config:
     }
     
     # Content Analysis Settings
-    MIN_CONTENT_LENGTH = 100  # Minimum words for valid content
-    MAX_CONTENT_LENGTH = 50000  # Maximum words to analyze
+    MIN_CONTENT_LENGTH = 100
+    MAX_CONTENT_LENGTH = 50000
     
     # User Agent for web scraping
     USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
