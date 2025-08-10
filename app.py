@@ -8,14 +8,9 @@ import pandas as pd
 from datetime import datetime
 import json
 
-# Import modules with error handling
-try:
-    from config import Config
-    from utils import QueryAnalyzer, ContentAnalyzer, UIHelpers, APIValidator
-except ImportError as e:
-    st.error(f"Import Error: {str(e)}")
-    st.error("Please ensure config.py and utils.py are in the same directory")
-    st.stop()
+# Import modules
+from config import Config
+from utils import QueryAnalyzer, ContentAnalyzer, UIHelpers, APIValidator
 
 # Page configuration
 st.set_page_config(
@@ -573,14 +568,3 @@ with st.container():
             """,
             unsafe_allow_html=True
         )
-
-# Debug info (only show in development)
-if st.checkbox("Show Debug Info", value=False, key="debug"):
-    st.markdown("### Debug Information")
-    st.json({
-        "configured_providers": configured_providers if 'configured_providers' in locals() else [],
-        "selected_provider": ai_provider if 'ai_provider' in locals() else None,
-        "selected_model": selected_model if 'selected_model' in locals() else None,
-        "mode": st.session_state.mode,
-        "api_keys_configured": {k: bool(v) for k, v in st.session_state.api_keys.items()}
-    })
