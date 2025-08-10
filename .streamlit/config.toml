@@ -1,14 +1,15 @@
-[theme]
-primaryColor = "#FF6B6B"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
-font = "sans serif"
+# Streamlit Secrets Configuration
+# Add this file to your Streamlit Cloud app settings
+# Or create locally at .streamlit/secrets.toml (don't commit to git!)
 
-[server]
-maxUploadSize = 10
-enableCORS = false
-enableXsrfProtection = true
+# Google Gemini API Configuration
+GEMINI_API_KEY = "your-gemini-api-key-here"  # Get from https://makersuite.google.com/app/apikey
 
-[browser]
-gatherUsageStats = false
+# OpenAI API Configuration  
+OPENAI_API_KEY = "your-openai-api-key-here"  # Get from https://platform.openai.com/api-keys
+
+# Anthropic Claude API Configuration
+ANTHROPIC_API_KEY = "your-anthropic-api-key-here"  # Get from https://console.anthropic.com/settings/keys
+
+# Optional: App configuration
+APP_NAME = "query-fanout-tool"  # Your Streamlit app name (if deployed)
