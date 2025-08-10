@@ -6,7 +6,10 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 from datetime import datetime
+import requests
+from bs4 import BeautifulSoup
 import re
+from urllib.parse import urlparse
 from config import Config
 
 
@@ -14,77 +17,10 @@ class QueryAnalyzer:
     """Handle query analysis and fan-out predictions"""
     
     @staticmethod
-    def filter_queries(df, min_value, filter_column, include_branded=False, brand_terms=None):
-        """Filter queries based on criteria"""
-        
-        df_filtered = df.copy()
-        
-        # Apply metric filter
-        if filter_column == "position":
-            # For position, lower is better
-            df_filtered = df_filtered[df_filtered[filter_column] <= min_value]
-        else:
-            # For other metrics, higher is better
-            df_filtered = df_filtered[df_filtered[filter_column] >= min_value]
-        
-        # Filter branded queries if requested
-        if not include_branded and brand_terms:
-            brand_pattern = '|'.join([re.escape(term) for term in brand_terms])
-            df_filtered = df_filtered[~df_filtered['query'].str.contains(brand_pattern, case=False, na=False)]
-        
-        return df_filtered
-    
-    @staticmethod
-    def analyze_query_fanout(queries_df, api_key, analysis_settings):
+    def analyze_query_fanout_new_content(queries_df, api_key, analysis_settings):
         """
-        Perform Query Fan-Out analysis using Gemini
-        
-        Args:
-            queries_df: DataFrame with query data
-            api_key: Gemini API key
-            analysis_settings: dict with analysis parameters
+        Perform Query Fan-Out analysis for new content planning
         """
-        
-        if not api_key:
-            st.error("Please provide a Gemini API key")
-            return None
-        
-        # Configure Gemini
-        genai.configure(api_key=api_key)
-        model_name = settings.get('gemini_model', 'gemini-1.5-flash')
-        model = genai.GenerativeModel(model_name)
-        
-        # Prepare query data
-        max_queries = analysis_settings.get('max_queries', 20)
-        sort_metric = analysis_settings.get('sort_metric', 'clicks')
-        
-        # Sort queries appropriately
-        if sort_metric == 'position':
-            top_queries = queries_df.nsmallest(max_queries, sort_metric)
-        else:
-            top_queries = queries_df.nlargest(max_queries, sort_metric)
-        
-        # Build the analysis prompt
-        prompt = QueryAnalyzer._build_fanout_prompt(top_queries, analysis_settings)
-        
-        try:
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            st.error(f"Error during Gemini analysis: {str(e)}")
-            return None
-    
-    @staticmethod
-    def analyze_query_fanout_manual(queries_df, api_key, analysis_settings):
-        """
-        Perform Query Fan-Out analysis for manual queries (new content planning)
-        
-        Args:
-            queries_df: DataFrame with query data
-            api_key: Gemini API key
-            analysis_settings: dict with analysis parameters
-        """
-        
         if not api_key:
             st.error("Please provide a Gemini API key")
             return None
@@ -94,177 +30,9 @@ class QueryAnalyzer:
         model_name = analysis_settings.get('gemini_model', 'gemini-1.5-flash')
         model = genai.GenerativeModel(model_name)
         
-        # Build the analysis prompt for new content
+        # Build the analysis prompt
         queries_list = queries_df['query'].tolist()
-        
-        depth_instructions = {
-            "Basic": "Provide a concise analysis focusing on the main fan-out queries and content structure.",
-            "Standard": "Provide a detailed analysis including sub-queries, content recommendations, and implementation tips.",
-            "Comprehensive": "Provide an exhaustive analysis including all query expansions, detailed content strategies, technical SEO requirements, and step-by-step implementation guide."
-        }
-        
-        prompt = f"""
-        You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
-        
-        OPTIMIZATION TARGET: {'Google AI Overviews (Simple, direct answers)' if analysis_settings.get('ai_search_type') == 'ai_overviews' else 'Google AI Mode (Complex query fan-out)'}
-        
-        Analyze these queries for NEW CONTENT CREATION:
-        
-        TARGET QUERIES FOR NEW CONTENT:
-        {chr(10).join(f"- {q}" for q in queries_list)}
-        
-        ANALYSIS DEPTH: {depth_instructions[analysis_settings.get('depth', 'Standard')]}
-        """
-        
-        if analysis_settings.get('ai_search_type') == 'ai_overviews':
-            # AI Overviews optimization for new content
-            prompt += """
-        
-        Please provide a content creation strategy for AI OVERVIEWS optimization:
-        
-        1. **DIRECT ANSWER CONTENT STRATEGY**
-           For each target query:
-           - The exact 40-60 word answer to include at the top
-           - Supporting details and context
-           - Definition boxes and quick facts
-           - Scannable format recommendations
-        
-        2. **SNIPPET-FIRST CONTENT ARCHITECTURE**
-           - How to structure content for featured snippets
-           - Paragraph vs. list vs. table format for each query
-           - HTML markup for optimal extraction
-           - Jump links and navigation
-        
-        3. **QUICK ANSWER OPTIMIZATION**
-           - First 100 words optimization for each piece
-           - Clear headers and subheaders
-           - Bulleted lists and numbered steps
-           - Summary boxes and key takeaways
-        
-        4. **SUPPORTING CONTENT ELEMENTS**
-           - FAQs to include
-           - Quick reference sections
-           - Glossary terms
-           - Comparison tables
-        """
-            
-            if analysis_settings.get('include_snippet_optimization'):
-                prompt += """
-        
-        5. **FEATURED SNIPPET TEMPLATES**
-           Provide exact snippet-optimized content for top queries:
-           - Definition snippets (What is...)
-           - List snippets (Types of..., Steps to...)
-           - Table snippets (Comparison, features)
-           - Paragraph snippets (How to..., Why...)
-        """
-        
-        else:
-            # AI Mode optimization for new content (Complex)
-            prompt += """
-        
-        Please provide a comprehensive content strategy for AI MODE optimization:
-        
-        1. **QUERY FAN-OUT MAPPING FOR NEW CONTENT**
-           For each target query:
-           - Primary intent and all sub-intents
-           - Complete list of fan-out queries AI would generate
-           - Multi-step research journeys
-           - Entity relationships to establish
-        
-        2. **COMPREHENSIVE CONTENT ARCHITECTURE**
-           - Topic cluster structure
-           - Pillar page vs. supporting pages
-           - Content depth requirements (2000-5000+ words)
-           - Semantic coverage checklist
-           - Internal linking blueprint
-        
-        3. **AI MODE OPTIMIZATION BLUEPRINT**
-           - Passage-level optimization strategy
-           - Entity markup throughout content
-           - Semantic HTML structure
-           - Progressive disclosure techniques
-           - Multi-format content (text, lists, tables, media)
-        """
-            
-            if analysis_settings.get('include_followup'):
-                prompt += """
-        
-        4. **FOLLOW-UP QUERY CONTENT MAPPING**
-           - Anticipated user journeys
-           - Next-step content recommendations
-           - Decision trees and flowcharts
-           - Related topics to cover
-           - Cross-linking opportunities
-        """
-            
-            if analysis_settings.get('include_entity_mapping'):
-                prompt += """
-        
-        5. **ENTITY-BASED CONTENT STRATEGY**
-           - Core entities to define and explain
-           - Entity relationship diagrams
-           - Knowledge base structure
-           - Semantic markup plan
-           - Glossary and definition sections
-        """
-        
-        # Common sections for both types
-        prompt += """
-        
-        6. **CONTENT CREATION ROADMAP**
-           Prioritized implementation plan:
-           - Which content to create first
-           - Dependencies and prerequisites
-           - Estimated effort and impact
-           - Publishing schedule
-        
-        7. **SUCCESS METRICS**
-           - Target rankings for each query
-           - Expected CTR improvements
-           - Engagement metrics to track
-           - AI visibility indicators
-        """
-        
-        if analysis_settings.get('include_schema', True):
-            prompt += """
-        
-        5. **SCHEMA MARKUP STRATEGY**
-           - Essential schema types for each content piece
-           - Properties to maximize AI understanding
-           - FAQ, HowTo, and other relevant schemas
-           - Entity markup recommendations
-        """
-        
-        if analysis_settings.get('include_competitors', False):
-            prompt += """
-        
-        6. **COMPETITIVE CONTENT ANALYSIS**
-           - What competitors likely rank for these queries
-           - Content gaps to exploit
-           - Unique angles and differentiation strategies
-           - How to create 10x better content
-        """
-        
-        prompt += """
-        
-        7. **CONTENT CREATION ROADMAP**
-           Provide a prioritized implementation plan:
-           - Which content to create first (quick wins)
-           - Content dependencies and optimal publishing order
-           - Estimated effort and impact for each piece
-           - Success metrics to track
-        
-        8. **CONTENT BRIEF TEMPLATES**
-           For the top 3 priority pieces, provide:
-           - Target keyword cluster
-           - Content outline with word count targets
-           - Key points to cover
-           - Unique value proposition
-        
-        Format your response with clear, actionable recommendations for content creation.
-        Focus on practical implementation for maximum AI search visibility.
-        """
+        prompt = QueryAnalyzer._build_new_content_prompt(queries_list, analysis_settings)
         
         try:
             response = model.generate_content(prompt)
@@ -272,260 +40,672 @@ class QueryAnalyzer:
         except Exception as e:
             st.error(f"Error during Gemini analysis: {str(e)}")
             return None
-        """Build the prompt for Gemini analysis"""
+    
+    @staticmethod
+    def _build_new_content_prompt(queries_list, settings):
+        """Build prompt for new content analysis using Query Fan-Out methodology"""
         
-        # Format query data
-        query_data = queries_df[['query', 'clicks', 'impressions', 'ctr', 'position']].to_string(index=False)
+        # Get variant types descriptions
+        variant_descriptions = []
+        for vtype in settings.get('variant_types', ['equivalent', 'follow_up']):
+            if vtype == 'equivalent':
+                variant_descriptions.append("- Equivalent: Alternative ways to ask the same question")
+            elif vtype == 'follow_up':
+                variant_descriptions.append("- Follow-up: Logical next questions")
+            elif vtype == 'generalization':
+                variant_descriptions.append("- Generalization: Broader versions of queries")
+            elif vtype == 'canonicalization':
+                variant_descriptions.append("- Canonicalization: Standardized search terms")
+            elif vtype == 'entailment':
+                variant_descriptions.append("- Entailment: Logically implied queries")
+            elif vtype == 'specification':
+                variant_descriptions.append("- Specification: More detailed versions")
+            elif vtype == 'clarification':
+                variant_descriptions.append("- Clarification: Intent clarification queries")
         
         prompt = f"""
-        You are an expert in Google's Query Fan-Out methodology and AI-powered search optimization.
+        You are an expert in Google's Query Fan-Out system and AI-powered search optimization.
         
-        OPTIMIZATION TARGET: {'Google AI Overviews (Simple, direct answers)' if settings.get('ai_search_type') == 'ai_overviews' else 'Google AI Mode (Complex query fan-out)'}
+        CONTEXT:
+        - Target Audience: {settings.get('target_audience', 'General audience')}
+        - Content Type: {settings.get('content_type', 'Blog Post')}
+        - Optimization Target: {settings.get('ai_search_type', 'ai_mode').replace('_', ' ').title()}
+        - Analysis Depth: {settings.get('depth', 'Standard')}
         
-        Analyze these Google Search Console queries and provide optimization recommendations:
+        QUERY VARIANT TYPES TO GENERATE:
+        {chr(10).join(variant_descriptions)}
         
-        QUERY PERFORMANCE DATA:
-        {query_data}
+        TARGET QUERIES FOR NEW CONTENT:
+        {chr(10).join(f"{i+1}. {q}" for i, q in enumerate(queries_list))}
         
-        ANALYSIS PARAMETERS:
-        - Focus on queries sorted by: {settings.get('sort_metric', 'clicks')}
-        - Analysis depth: {settings.get('depth', 'comprehensive')}
-        - AI Search Type: {settings.get('ai_search_type', 'ai_mode')}
+        Please provide a comprehensive Query Fan-Out analysis following Google's methodology:
+        
+        ## 1. QUERY FAN-OUT GENERATION
+        For each target query, generate ALL requested variant types:
         """
         
-        if settings.get('ai_search_type') == 'ai_overviews':
-            # AI Overviews optimization (Simple)
-            prompt += """
-        
-        Please provide analysis for AI OVERVIEWS optimization:
-        
-        1. **DIRECT ANSWER OPTIMIZATION**
-           - Which queries need clear, concise answers in the first paragraph
-           - Ideal answer length (40-60 words) for each query
-           - Definition-style formatting recommendations
-           - List and table opportunities
-        
-        2. **SNIPPET OPTIMIZATION STRATEGY**
-           - Featured snippet opportunities for each query
-           - Paragraph vs. list vs. table snippet recommendations
-           - Optimal formatting for quick extraction
-           - Answer box targeting techniques
-        
-        3. **CONTENT STRUCTURE FOR AI OVERVIEWS**
-           - Lead paragraph optimization for each topic
-           - Clear question-answer formatting
-           - Scannable content structure
-           - Bold text and emphasis strategies
-        """
-            
-            if settings.get('include_snippet_optimization'):
+        # Add variant-specific instructions
+        for vtype in settings.get('variant_types', []):
+            if vtype == 'equivalent':
                 prompt += """
-        
-        4. **FEATURED SNIPPET TARGETING**
-           - Specific snippet formats for each query type
-           - Character/word count recommendations
-           - HTML markup for better extraction
-           - Common snippet trigger patterns
+        - **Equivalent Queries**: List 3-5 alternative phrasings users might use
         """
-            
-            if settings.get('include_paa_optimization'):
+            elif vtype == 'follow_up':
                 prompt += """
-        
-        5. **PEOPLE ALSO ASK OPTIMIZATION**
-           - Related questions to include for each topic
-           - Q&A schema implementation
-           - Accordion/expandable content recommendations
-           - PAA box targeting strategies
+        - **Follow-up Queries**: List 3-5 logical next questions users would ask
         """
-        
-        else:
-            # AI Mode optimization (Complex)
-            prompt += """
-        
-        Please provide analysis for AI MODE optimization (Complex Query Fan-Out):
-        
-        1. **PRIMARY ENTITY & INTENT MAPPING**
-           - Identify the main ontological entities for each query
-           - Classify query intent (informational, transactional, navigational, commercial)
-           - Group queries into semantic clusters
-           - Knowledge graph connections
-        
-        2. **QUERY FAN-OUT PREDICTIONS**
-           For each primary query, identify:
-           - ALL sub-queries that Google AI Mode would generate
-           - Multi-step research paths users might follow
-           - Contextual expansions and refinements
-           - Related entity queries
-        
-        3. **COMPREHENSIVE CONTENT COVERAGE**
-           - Which fan-out queries need dedicated sections
-           - Content depth requirements for AI Mode
-           - Topic cluster architecture
-           - Semantic completeness scoring
-        """
-            
-            if settings.get('include_followup'):
+            elif vtype == 'generalization':
                 prompt += """
-        
-        4. **FOLLOW-UP QUERY MAPPING**
-           - Predict next queries in user journey
-           - Multi-hop question sequences
-           - Decision tree content structure
-           - Progressive disclosure strategies
+        - **Generalization Queries**: List 2-3 broader topic queries
         """
-            
-            if settings.get('include_entity_mapping'):
+            elif vtype == 'specification':
                 prompt += """
-        
-        5. **ENTITY RELATIONSHIP MAPPING**
-           - Core entities and their relationships
-           - Knowledge graph optimization
-           - Entity markup and disambiguation
-           - Semantic triple recommendations
+        - **Specification Queries**: List 3-5 more specific/detailed versions
         """
-        
-        # Common sections for both types
-        prompt += """
-        
-        6. **CONTENT OPTIMIZATION PRIORITIES**
-           Based on current performance:
-           - Quick wins: Minimal changes for maximum impact
-           - Medium-term: Content additions and restructuring  
-           - Long-term: New content creation needs
-        """
-        
-        # Add optional sections based on settings
-        if settings.get('include_schema', True):
-            prompt += """
-        
-        6. **SCHEMA MARKUP RECOMMENDATIONS**
-           - Specific schema types for each content piece
-           - Required and recommended properties
-           - How schema enhances AI understanding
-        """
-        
-        if settings.get('include_competitors', False):
-            prompt += """
-        
-        7. **COMPETITIVE LANDSCAPE ANALYSIS**
-           - Likely competitor strategies for these queries
-           - Differentiation opportunities
-           - Content gaps in the market
+            elif vtype == 'entailment':
+                prompt += """
+        - **Entailment Queries**: List 2-3 logically implied questions
         """
         
         prompt += """
         
-        8. **IMPLEMENTATION ROADMAP**
-           Provide a prioritized action plan:
-           - Week 1-2: Immediate optimizations
-           - Month 1: Content updates and additions
-           - Month 2-3: New content creation
-           - Ongoing: Monitoring and iteration
+        ## 2. MULTI-PATH EXPLORATION
+        Identify different interpretation paths for ambiguous queries:
+        - Technical vs. General interpretations
+        - Commercial vs. Informational intents
+        - Different user contexts (beginner vs. expert)
         
-        Format your response with clear headers, specific examples, and actionable recommendations.
-        Focus on practical implementation rather than theory.
+        ## 3. CONTENT ARCHITECTURE
+        Based on the fan-out analysis, provide:
+        - **Primary Content Hub**: Main pillar page structure
+        - **Supporting Content**: List of supporting articles needed
+        - **Content Depth**: Word count recommendations for each piece
+        - **Internal Linking Strategy**: How to connect the content
+        """
+        
+        if settings.get('ai_search_type') in ['ai_overviews', 'both']:
+            prompt += """
+        
+        ## 4. AI OVERVIEWS OPTIMIZATION
+        For quick answer optimization:
+        - **Direct Answer Format**: Exact 40-60 word answers for each query
+        - **Snippet Structure**: Paragraph vs. list vs. table recommendations
+        - **First 100 Words**: Optimization strategy for immediate visibility
+        - **FAQ Structure**: Questions and concise answers
+        """
+        
+        if settings.get('ai_search_type') in ['ai_mode', 'both']:
+            prompt += """
+        
+        ## 5. AI MODE OPTIMIZATION
+        For complex query fan-out:
+        - **Passage-Level Coverage**: Key passages to include
+        - **Semantic Completeness**: Topics that must be covered
+        - **Entity Relationships**: Core entities and their connections
+        - **Progressive Disclosure**: Information architecture strategy
+        """
+        
+        if settings.get('include_entity_mapping'):
+            prompt += """
+        
+        ## 6. ENTITY MAPPING
+        - **Core Entities**: Primary entities to define
+        - **Entity Relationships**: How entities connect
+        - **Knowledge Graph**: Visual representation of connections
+        - **Semantic Markup**: Schema.org recommendations
+        """
+        
+        if settings.get('include_cross_verification'):
+            prompt += """
+        
+        ## 7. CROSS-VERIFICATION STRATEGY
+        - **Fact Verification**: Key facts to verify and cite
+        - **Contradictory Information**: How to handle conflicting data
+        - **Authority Signals**: Sources and citations to include
+        - **Trust Indicators**: Elements that build credibility
+        """
+        
+        if settings.get('include_schema'):
+            prompt += """
+        
+        ## 8. SCHEMA MARKUP STRATEGY
+        - **Essential Schemas**: Required schema types
+        - **FAQ Schema**: Questions and answers
+        - **HowTo Schema**: Step-by-step processes
+        - **Article/BlogPosting**: Metadata requirements
+        """
+        
+        if settings.get('include_competitors'):
+            prompt += """
+        
+        ## 9. COMPETITIVE DIFFERENTIATION
+        - **Content Gaps**: What competitors likely miss
+        - **Unique Angles**: Fresh perspectives to explore
+        - **10x Content**: How to create superior content
+        - **Differentiation Strategy**: Unique value propositions
+        """
+        
+        prompt += """
+        
+        ## 10. IMPLEMENTATION ROADMAP
+        Provide a prioritized action plan:
+        1. **Quick Wins**: Content that can rank quickly
+        2. **Foundation Content**: Essential pieces to create first
+        3. **Supporting Content**: Secondary pieces to develop
+        4. **Enhancement Strategy**: Ongoing optimization approach
+        
+        ## 11. SUCCESS METRICS
+        - **Ranking Targets**: Expected positions for each query
+        - **Visibility Indicators**: AI mode appearance signals
+        - **Engagement Metrics**: User behavior targets
+        - **Conversion Goals**: Business outcomes to track
+        
+        Format your response with clear sections, bullet points, and actionable recommendations.
+        Focus on practical implementation using Google's Query Fan-Out methodology.
         """
         
         return prompt
+
+
+class ContentAnalyzer:
+    """Handle content fetching and analysis for existing pages"""
     
     @staticmethod
-    def export_analysis(analysis_text, queries_df, format='markdown'):
-        """Export analysis in various formats"""
+    def fetch_content(url):
+        """Fetch and parse content from a URL"""
+        try:
+            headers = {'User-Agent': Config.USER_AGENT}
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Extract content
+            content_data = {
+                'url': url,
+                'title': ContentAnalyzer._extract_title(soup),
+                'meta_description': ContentAnalyzer._extract_meta_description(soup),
+                'headings': ContentAnalyzer._extract_headings(soup),
+                'content': ContentAnalyzer._extract_text_content(soup),
+                'images': ContentAnalyzer._extract_images(soup),
+                'internal_links': ContentAnalyzer._extract_internal_links(soup, url),
+                'external_links': ContentAnalyzer._extract_external_links(soup, url),
+                'structured_data': ContentAnalyzer._extract_structured_data(soup),
+                'word_count': 0,
+                'fetch_time': datetime.now()
+            }
+            
+            # Calculate word count
+            if content_data['content']:
+                content_data['word_count'] = len(content_data['content'].split())
+            
+            return content_data
+            
+        except requests.RequestException as e:
+            st.error(f"Error fetching content: {str(e)}")
+            return None
+        except Exception as e:
+            st.error(f"Error parsing content: {str(e)}")
+            return None
+    
+    @staticmethod
+    def _extract_title(soup):
+        """Extract page title"""
+        title_tag = soup.find('title')
+        if title_tag:
+            return title_tag.get_text().strip()
         
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        h1_tag = soup.find('h1')
+        if h1_tag:
+            return h1_tag.get_text().strip()
         
-        if format == 'markdown':
-            return f"""# Query Fan-Out Analysis Report
-Generated: {timestamp}
-
-## Summary Statistics
-- Total Queries Analyzed: {len(queries_df)}
-- Total Clicks: {queries_df['clicks'].sum():,}
-- Total Impressions: {queries_df['impressions'].sum():,}
-- Average CTR: {queries_df['ctr'].mean():.2%}
-- Average Position: {queries_df['position'].mean():.1f}
-
-## Top Performing Queries
-{queries_df.head(10).to_markdown(index=False)}
-
-## Query Fan-Out Analysis
-{analysis_text}
-
----
-*Report generated by Query Fan-Out Analysis Tool*
-"""
+        return "No title found"
+    
+    @staticmethod
+    def _extract_meta_description(soup):
+        """Extract meta description"""
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        if meta_desc:
+            return meta_desc.get('content', '').strip()
+        return ""
+    
+    @staticmethod
+    def _extract_headings(soup):
+        """Extract all headings with hierarchy"""
+        headings = []
+        for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+            headings.append({
+                'level': tag.name,
+                'text': tag.get_text().strip()
+            })
+        return headings
+    
+    @staticmethod
+    def _extract_text_content(soup):
+        """Extract main text content"""
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
         
-        elif format == 'csv':
-            # Return queries with analysis appended
-            queries_export = queries_df.copy()
-            queries_export['analysis_date'] = timestamp
-            return queries_export
+        # Try to find main content area
+        main_content = None
+        for selector in ['main', 'article', '[role="main"]', '.content', '#content']:
+            main_content = soup.select_one(selector)
+            if main_content:
+                break
         
-        else:
-            return analysis_text
+        if not main_content:
+            main_content = soup.find('body')
+        
+        if main_content:
+            text = main_content.get_text(separator=' ', strip=True)
+            # Clean up excessive whitespace
+            text = re.sub(r'\s+', ' ', text)
+            return text
+        
+        return ""
+    
+    @staticmethod
+    def _extract_images(soup):
+        """Extract image information"""
+        images = []
+        for img in soup.find_all('img'):
+            images.append({
+                'src': img.get('src', ''),
+                'alt': img.get('alt', ''),
+                'title': img.get('title', '')
+            })
+        return images
+    
+    @staticmethod
+    def _extract_internal_links(soup, base_url):
+        """Extract internal links"""
+        internal_links = []
+        domain = urlparse(base_url).netloc
+        
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            if domain in href or href.startswith('/'):
+                internal_links.append({
+                    'url': href,
+                    'text': link.get_text().strip()
+                })
+        
+        return internal_links
+    
+    @staticmethod
+    def _extract_external_links(soup, base_url):
+        """Extract external links"""
+        external_links = []
+        domain = urlparse(base_url).netloc
+        
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            if href.startswith('http') and domain not in href:
+                external_links.append({
+                    'url': href,
+                    'text': link.get_text().strip()
+                })
+        
+        return external_links
+    
+    @staticmethod
+    def _extract_structured_data(soup):
+        """Extract structured data (JSON-LD)"""
+        structured_data = []
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                import json
+                data = json.loads(script.string)
+                structured_data.append(data)
+            except:
+                pass
+        return structured_data
+    
+    @staticmethod
+    def analyze_existing_content(content_data, primary_keyword, additional_keywords, 
+                                competitor_urls, api_key, analysis_settings):
+        """
+        Analyze existing content using Query Fan-Out methodology
+        """
+        if not api_key:
+            st.error("Please provide a Gemini API key")
+            return None
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        model_name = analysis_settings.get('gemini_model', 'gemini-1.5-flash')
+        model = genai.GenerativeModel(model_name)
+        
+        # Fetch competitor content if provided
+        competitor_data = []
+        if competitor_urls and analysis_settings.get('include_competitors'):
+            for comp_url in competitor_urls[:3]:  # Limit to 3 competitors
+                comp_content = ContentAnalyzer.fetch_content(comp_url)
+                if comp_content:
+                    competitor_data.append(comp_content)
+        
+        # Build the analysis prompt
+        prompt = ContentAnalyzer._build_optimization_prompt(
+            content_data, 
+            primary_keyword, 
+            additional_keywords,
+            competitor_data,
+            analysis_settings
+        )
+        
+        try:
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            st.error(f"Error during Gemini analysis: {str(e)}")
+            return None
+    
+    @staticmethod
+    def _build_optimization_prompt(content_data, primary_keyword, additional_keywords, 
+                                  competitor_data, settings):
+        """Build prompt for existing content optimization"""
+        
+        # Prepare content summary
+        content_summary = f"""
+        URL: {content_data['url']}
+        Title: {content_data['title']}
+        Meta Description: {content_data['meta_description']}
+        Word Count: {content_data['word_count']}
+        Headings Count: {len(content_data['headings'])}
+        Images: {len(content_data['images'])}
+        Internal Links: {len(content_data['internal_links'])}
+        External Links: {len(content_data['external_links'])}
+        """
+        
+        # Heading structure
+        heading_structure = "\n".join([f"{h['level'].upper()}: {h['text']}" 
+                                      for h in content_data['headings'][:20]])
+        
+        # Content excerpt (first 500 words)
+        content_excerpt = ' '.join(content_data['content'].split()[:500])
+        
+        prompt = f"""
+        You are an expert in Google's Query Fan-Out system and content optimization.
+        
+        TASK: Analyze and provide optimization recommendations for existing content.
+        
+        PRIMARY KEYWORD: {primary_keyword}
+        ADDITIONAL KEYWORDS: {', '.join(additional_keywords) if additional_keywords else 'None'}
+        
+        CURRENT CONTENT ANALYSIS:
+        {content_summary}
+        
+        HEADING STRUCTURE:
+        {heading_structure}
+        
+        CONTENT EXCERPT (First 500 words):
+        {content_excerpt}
+        
+        OPTIMIZATION TARGET: {settings.get('ai_search_type', 'ai_mode').replace('_', ' ').title()}
+        
+        Please provide a comprehensive optimization analysis:
+        
+        ## 1. CURRENT STATE ASSESSMENT
+        - **Content Coverage**: How well does the content cover the topic?
+        - **Query Alignment**: Does it match user search intent?
+        - **Semantic Completeness**: Missing topics or subtopics
+        - **Technical Issues**: SEO problems identified
+        
+        ## 2. QUERY FAN-OUT ANALYSIS
+        Based on the primary keyword "{primary_keyword}", generate:
+        """
+        
+        # Add variant type analysis
+        for vtype in settings.get('variant_types', ['equivalent', 'follow_up']):
+            if vtype == 'equivalent':
+                prompt += """
+        - **Equivalent Queries**: Alternative queries this content should target
+        """
+            elif vtype == 'follow_up':
+                prompt += """
+        - **Follow-up Queries**: Next questions users would ask
+        """
+            elif vtype == 'specification':
+                prompt += """
+        - **Specification Queries**: Detailed queries to cover
+        """
+        
+        prompt += """
+        
+        ## 3. CONTENT GAPS & OPPORTUNITIES
+        - **Missing Query Coverage**: Which fan-out queries aren't addressed?
+        - **Thin Content Areas**: Sections that need expansion
+        - **New Sections Needed**: Additional content to add
+        - **Entity Gaps**: Important entities not mentioned
+        """
+        
+        if settings.get('analyze_structure'):
+            prompt += """
+        
+        ## 4. STRUCTURAL OPTIMIZATION
+        - **Heading Hierarchy**: Improvements to H1-H6 structure
+        - **Content Flow**: Logical progression recommendations
+        - **Paragraph Optimization**: Length and readability
+        - **List Opportunities**: Where to use bullets/numbers
+        """
+        
+        if settings.get('analyze_readability'):
+            prompt += """
+        
+        ## 5. READABILITY & USER EXPERIENCE
+        - **Sentence Complexity**: Simplification opportunities
+        - **Technical Jargon**: Terms to explain or simplify
+        - **Scannability**: Formatting improvements
+        - **Engagement Elements**: Interactive elements to add
+        """
+        
+        if settings.get('ai_search_type') in ['ai_overviews', 'both']:
+            prompt += """
+        
+        ## 6. AI OVERVIEWS OPTIMIZATION
+        - **Direct Answer**: Add a 40-60 word answer at the top
+        - **Featured Snippet**: Format for snippet extraction
+        - **FAQ Section**: Questions and answers to add
+        - **Quick Reference**: Summary boxes or tables
+        """
+        
+        if settings.get('ai_search_type') in ['ai_mode', 'both']:
+            prompt += """
+        
+        ## 7. AI MODE OPTIMIZATION
+        - **Passage Enhancement**: Key passages to improve
+        - **Semantic Coverage**: Topics to add for completeness
+        - **Entity Markup**: Entities to define and link
+        - **Context Layers**: Progressive disclosure improvements
+        """
+        
+        if settings.get('include_entity_mapping'):
+            prompt += """
+        
+        ## 8. ENTITY OPTIMIZATION
+        - **Missing Entities**: Important entities to add
+        - **Entity Definitions**: Terms that need explanation
+        - **Relationship Mapping**: Connections to establish
+        - **Knowledge Graph**: Visual representation suggestions
+        """
+        
+        if competitor_data:
+            prompt += f"""
+        
+        ## 9. COMPETITIVE ANALYSIS
+        Comparing to {len(competitor_data)} competitor(s):
+        - **Content Length**: How does word count compare?
+        - **Topic Coverage**: What do competitors cover that you don't?
+        - **Unique Value**: What unique value can you add?
+        - **Differentiation**: How to stand out from competition
+        """
+        
+        if settings.get('include_schema'):
+            prompt += """
+        
+        ## 10. SCHEMA MARKUP RECOMMENDATIONS
+        - **Current Schema**: Analysis of existing structured data
+        - **Missing Schema**: Types to add
+        - **Schema Enhancements**: Properties to include
+        - **Implementation Priority**: Which schemas are most important
+        """
+        
+        prompt += """
+        
+        ## 11. ACTIONABLE OPTIMIZATION PLAN
+        Provide specific, implementable recommendations:
+        
+        ### IMMEDIATE FIXES (Quick Wins)
+        - Title tag optimization
+        - Meta description rewrite
+        - First paragraph enhancement
+        - Quick formatting fixes
+        
+        ### SHORT-TERM IMPROVEMENTS (1-2 weeks)
+        - Content additions (specify exact sections)
+        - Heading restructuring
+        - Internal linking improvements
+        - Image optimization
+        
+        ### LONG-TERM ENHANCEMENTS (1 month)
+        - Major content expansions
+        - New supporting content creation
+        - Comprehensive entity coverage
+        - Advanced schema implementation
+        
+        ## 12. CONTENT REWRITE EXAMPLES
+        Provide specific rewrite examples for:
+        - Opening paragraph (optimized for AI)
+        - Key sections that need improvement
+        - FAQ additions
+        - Conclusion with clear CTAs
+        
+        ## 13. SUCCESS METRICS
+        - Expected ranking improvements
+        - AI visibility indicators to monitor
+        - User engagement targets
+        - Conversion optimization goals
+        
+        Be specific, actionable, and prioritize recommendations by impact.
+        Focus on practical changes that align with Google's Query Fan-Out system.
+        """
+        
+        return prompt
 
 
 class UIHelpers:
     """Helper functions for Streamlit UI"""
     
     @staticmethod
-    def display_metrics(df):
-        """Display summary metrics"""
+    def display_content_metrics(content_data):
+        """Display content metrics in a nice format"""
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Total Queries", f"{len(df):,}")
+            st.metric("Word Count", f"{content_data['word_count']:,}")
         
         with col2:
-            st.metric("Total Clicks", f"{df['clicks'].sum():,}")
+            st.metric("Headings", len(content_data['headings']))
         
         with col3:
-            st.metric("Avg CTR", f"{df['ctr'].mean():.2%}")
+            st.metric("Images", len(content_data['images']))
         
         with col4:
-            st.metric("Avg Position", f"{df['position'].mean():.1f}")
+            st.metric("Internal Links", len(content_data['internal_links']))
+        
+        # Show additional details in expander
+        with st.expander("📊 Detailed Content Analysis"):
+            st.write(f"**Title:** {content_data['title']}")
+            st.write(f"**Meta Description:** {content_data['meta_description'] or 'Not found'}")
+            
+            if content_data['headings']:
+                st.write("**Heading Structure:**")
+                for h in content_data['headings'][:10]:
+                    indent = "  " * (int(h['level'][1]) - 1)
+                    st.write(f"{indent}{h['level'].upper()}: {h['text']}")
+                if len(content_data['headings']) > 10:
+                    st.write(f"... and {len(content_data['headings']) - 10} more headings")
+            
+            if content_data['structured_data']:
+                st.write(f"**Structured Data Found:** {len(content_data['structured_data'])} schema(s)")
     
     @staticmethod
-    def create_position_distribution(df):
-        """Create position distribution chart data"""
-        bins = [0, 3, 10, 20, 50, 100]
-        labels = ['Top 3', 'Page 1 (4-10)', 'Page 2', 'Page 3-5', 'Beyond']
+    def show_export_options(analysis, data, settings, mode='new_content'):
+        """Show export options for the analysis"""
+        col1, col2, col3 = st.columns(3)
         
-        df['position_range'] = pd.cut(df['position'], bins=bins, labels=labels, include_lowest=True)
-        return df['position_range'].value_counts().sort_index()
-    
-    @staticmethod
-    def highlight_opportunities(df):
-        """Identify and highlight optimization opportunities"""
-        opportunities = []
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # High impressions, low CTR
-        high_imp_low_ctr = df[(df['impressions'] > df['impressions'].quantile(0.7)) & 
-                              (df['ctr'] < df['ctr'].quantile(0.3))]
-        if not high_imp_low_ctr.empty:
-            opportunities.append({
-                'type': 'High Impressions, Low CTR',
-                'queries': high_imp_low_ctr.head(5)['query'].tolist(),
-                'action': 'Improve meta descriptions and title tags'
-            })
+        with col1:
+            # Markdown export
+            st.download_button(
+                label="📥 Download Analysis (Markdown)",
+                data=analysis,
+                file_name=f"query_fanout_{mode}_{timestamp}.md",
+                mime="text/markdown"
+            )
         
-        # Good CTR, poor position
-        good_ctr_poor_pos = df[(df['ctr'] > df['ctr'].quantile(0.7)) & 
-                               (df['position'] > 10)]
-        if not good_ctr_poor_pos.empty:
-            opportunities.append({
-                'type': 'Good CTR, Poor Position',
-                'queries': good_ctr_poor_pos.head(5)['query'].tolist(),
-                'action': 'Boost content quality and internal linking'
-            })
+        with col2:
+            # Full report
+            if mode == 'new_content':
+                report = f"""# Query Fan-Out Analysis Report - New Content Planning
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+## Target Queries
+{chr(10).join(f"- {q}" for q in data[:settings.get('max_queries', 20)])}
+
+## Analysis Settings
+- Optimization Target: {settings.get('ai_search_type', 'ai_mode')}
+- Depth: {settings.get('depth', 'Standard')}
+- Variant Types: {', '.join(settings.get('variant_types', []))}
+
+## Analysis Results
+{analysis}
+
+---
+*Generated by Query Fan-Out Analysis Tool*
+"""
+            else:
+                report = f"""# Query Fan-Out Analysis Report - Content Optimization
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+## Content Details
+- URL: {data.get('url')}
+- Primary Keyword: {data.get('keyword')}
+
+## Analysis Settings
+- Optimization Target: {settings.get('ai_search_type', 'ai_mode')}
+- Depth: {settings.get('depth', 'Standard')}
+
+## Optimization Recommendations
+{analysis}
+
+---
+*Generated by Query Fan-Out Analysis Tool*
+"""
+            
+            st.download_button(
+                label="📄 Download Full Report",
+                data=report,
+                file_name=f"query_fanout_report_{timestamp}.md",
+                mime="text/markdown"
+            )
         
-        # Near first page (positions 11-20)
-        near_first_page = df[(df['position'] > 10) & (df['position'] <= 20)]
-        if not near_first_page.empty:
-            opportunities.append({
-                'type': 'Near First Page',
-                'queries': near_first_page.head(5)['query'].tolist(),
-                'action': 'Quick wins - minor optimizations can push to page 1'
-            })
-        
-        return opportunities
+        with col3:
+            # JSON export
+            import json
+            json_data = {
+                'mode': mode,
+                'timestamp': datetime.now().isoformat(),
+                'data': data if isinstance(data, dict) else {'queries': data},
+                'settings': settings,
+                'analysis': analysis
+            }
+            
+            st.download_button(
+                label="💾 Download JSON",
+                data=json.dumps(json_data, indent=2),
+                file_name=f"query_fanout_data_{timestamp}.json",
+                mime="application/json"
+            )
