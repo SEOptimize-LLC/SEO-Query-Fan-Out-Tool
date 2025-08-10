@@ -8,9 +8,14 @@ import pandas as pd
 from datetime import datetime
 import json
 
-# Import modules
-from config import Config
-from utils import QueryAnalyzer, ContentAnalyzer, UIHelpers, APIValidator
+# Import modules with error handling
+try:
+    from config import Config
+    from utils import QueryAnalyzer, ContentAnalyzer, UIHelpers, APIValidator
+except ImportError as e:
+    st.error(f"Import Error: {str(e)}")
+    st.error("Please ensure config.py and utils.py are in the same directory")
+    st.stop()
 
 # Page configuration
 st.set_page_config(
@@ -26,12 +31,15 @@ if 'analysis_history' not in st.session_state:
 if 'mode' not in st.session_state:
     st.session_state.mode = 'new_content'
 if 'api_keys' not in st.session_state:
-    # Load API keys from secrets/environment on first run
-    st.session_state.api_keys = {
-        'gemini': Config.get_gemini_api_key(),
-        'openai': Config.get_openai_api_key(),
-        'anthropic': Config.get_anthropic_api_key()
-    }
+    # Try to load from Config
+    try:
+        st.session_state.api_keys = Config.get_all_api_keys()
+    except:
+        st.session_state.api_keys = {
+            'gemini': '',
+            'openai': '',
+            'anthropic': ''
+        }
 
 # Title and description
 st.title("🔍 Query Fan-Out Analysis Tool")
@@ -76,15 +84,16 @@ with st.sidebar:
             help="Get from: https://makersuite.google.com/app/apikey",
             key="gemini_key_input"
         )
-        if gemini_key:
+        if gemini_key != st.session_state.api_keys.get('gemini', ''):
             st.session_state.api_keys['gemini'] = gemini_key
-            if st.button("Validate", key="validate_gemini"):
-                with st.spinner("Validating..."):
-                    is_valid, message = APIValidator.validate_gemini_key(gemini_key)
-                    if is_valid:
-                        st.success(message)
-                    else:
-                        st.error(message)
+            
+        if gemini_key and st.button("Validate", key="validate_gemini"):
+            with st.spinner("Validating..."):
+                is_valid, message = APIValidator.validate_gemini_key(gemini_key)
+                if is_valid:
+                    st.success(message)
+                else:
+                    st.error(message)
         
         st.markdown("---")
         
@@ -97,15 +106,16 @@ with st.sidebar:
             help="Get from: https://platform.openai.com/api-keys",
             key="openai_key_input"
         )
-        if openai_key:
+        if openai_key != st.session_state.api_keys.get('openai', ''):
             st.session_state.api_keys['openai'] = openai_key
-            if st.button("Validate", key="validate_openai"):
-                with st.spinner("Validating..."):
-                    is_valid, message = APIValidator.validate_openai_key(openai_key)
-                    if is_valid:
-                        st.success(message)
-                    else:
-                        st.error(message)
+            
+        if openai_key and st.button("Validate", key="validate_openai"):
+            with st.spinner("Validating..."):
+                is_valid, message = APIValidator.validate_openai_key(openai_key)
+                if is_valid:
+                    st.success(message)
+                else:
+                    st.error(message)
         
         st.markdown("---")
         
@@ -118,15 +128,16 @@ with st.sidebar:
             help="Get from: https://console.anthropic.com/settings/keys",
             key="anthropic_key_input"
         )
-        if anthropic_key:
+        if anthropic_key != st.session_state.api_keys.get('anthropic', ''):
             st.session_state.api_keys['anthropic'] = anthropic_key
-            if st.button("Validate", key="validate_anthropic"):
-                with st.spinner("Validating..."):
-                    is_valid, message = APIValidator.validate_anthropic_key(anthropic_key)
-                    if is_valid:
-                        st.success(message)
-                    else:
-                        st.error(message)
+            
+        if anthropic_key and st.button("Validate", key="validate_anthropic"):
+            with st.spinner("Validating..."):
+                is_valid, message = APIValidator.validate_anthropic_key(anthropic_key)
+                if is_valid:
+                    st.success(message)
+                else:
+                    st.error(message)
     
     # Show which providers are configured
     configured_providers = [p for p, k in st.session_state.api_keys.items() if k]
@@ -360,33 +371,39 @@ entity-based content optimization""",
                     'priority': range(1, min(max_queries + 1, len(queries_list) + 1))
                 })
                 
-                with st.spinner(f"🤖 Analyzing queries with {Config.AI_MODELS[ai_provider]['name']}..."):
-                    analysis = QueryAnalyzer.analyze_query_fanout_new_content(
-                        queries_df,
-                        api_key,
-                        analysis_settings
-                    )
-                    
-                    if analysis:
-                        # Store and display results
-                        st.session_state.last_analysis = {
-                            'timestamp': datetime.now(),
-                            'analysis': analysis,
-                            'settings': analysis_settings,
-                            'queries': queries_list
-                        }
-                        
-                        st.markdown("---")
-                        st.header("📋 Query Fan-Out Analysis Results")
-                        st.markdown(analysis)
-                        
-                        # Export options
-                        UIHelpers.show_export_options(
-                            analysis, 
-                            queries_list, 
-                            analysis_settings, 
-                            mode='new_content'
+                with st.spinner(f"🤖 Analyzing queries with {Config.AI_MODELS[ai_provider]['name']} ({selected_model})..."):
+                    try:
+                        analysis = QueryAnalyzer.analyze_query_fanout_new_content(
+                            queries_df,
+                            api_key,
+                            analysis_settings
                         )
+                        
+                        if analysis:
+                            # Store and display results
+                            st.session_state.last_analysis = {
+                                'timestamp': datetime.now(),
+                                'analysis': analysis,
+                                'settings': analysis_settings,
+                                'queries': queries_list
+                            }
+                            
+                            st.markdown("---")
+                            st.header("📋 Query Fan-Out Analysis Results")
+                            st.markdown(analysis)
+                            
+                            # Export options
+                            UIHelpers.show_export_options(
+                                analysis, 
+                                queries_list, 
+                                analysis_settings, 
+                                mode='new_content'
+                            )
+                        else:
+                            st.error("Analysis failed. Please check your API key and try again.")
+                    except Exception as e:
+                        st.error(f"Error during analysis: {str(e)}")
+                        st.info("Please check your API key and model selection")
         elif not available_providers:
             st.warning("Please configure at least one API key in the sidebar")
         else:
@@ -461,74 +478,80 @@ elif st.session_state.mode == 'optimize_existing':
                 st.error(f"No API key configured for {Config.AI_MODELS[ai_provider]['name']}")
             else:
                 with st.spinner("📥 Fetching and analyzing content..."):
-                    # Fetch the content
-                    content_data = ContentAnalyzer.fetch_content(content_url)
-                    
-                    if content_data:
-                        # Extract additional keywords list
-                        additional_kw_list = [kw.strip() for kw in additional_keywords.split('\n') if kw.strip()]
-                        competitor_url_list = [url.strip() for url in competitor_urls.split('\n') if url.strip()]
+                    try:
+                        # Fetch the content
+                        content_data = ContentAnalyzer.fetch_content(content_url)
                         
-                        # Prepare analysis settings
-                        analysis_settings = {
-                            'depth': analysis_depth,
-                            'include_schema': include_schema,
-                            'include_competitors': include_competitors and len(competitor_url_list) > 0,
-                            'mode': 'optimize_existing',
-                            'ai_search_type': ai_search_type,
-                            'variant_types': variant_types,
-                            'include_entity_mapping': include_entity_mapping,
-                            'include_cross_verification': include_cross_verification,
-                            'include_snippet_optimization': include_snippet_optimization,
-                            'include_paa_optimization': include_paa_optimization,
-                            'ai_provider': ai_provider,
-                            'model': selected_model,
-                            'analyze_readability': analyze_readability,
-                            'analyze_structure': analyze_structure,
-                            'analyze_entities': analyze_entities,
-                            'analyze_gaps': analyze_gaps,
-                            'max_topics': max_topics
-                        }
-                        
-                        # Show content overview
-                        st.markdown("---")
-                        st.subheader("📄 Content Overview")
-                        UIHelpers.display_content_metrics(content_data)
-                        
-                        # Run the analysis
-                        with st.spinner(f"🤖 Running Query Fan-Out analysis with {Config.AI_MODELS[ai_provider]['name']}..."):
-                            analysis = ContentAnalyzer.analyze_existing_content(
-                                content_data,
-                                primary_keyword,
-                                additional_kw_list,
-                                competitor_url_list,
-                                api_key,
-                                analysis_settings
-                            )
+                        if content_data:
+                            # Extract additional keywords list
+                            additional_kw_list = [kw.strip() for kw in additional_keywords.split('\n') if kw.strip()]
+                            competitor_url_list = [url.strip() for url in competitor_urls.split('\n') if url.strip()]
                             
-                            if analysis:
-                                # Store and display results
-                                st.session_state.last_analysis = {
-                                    'timestamp': datetime.now(),
-                                    'analysis': analysis,
-                                    'settings': analysis_settings,
-                                    'url': content_url,
-                                    'primary_keyword': primary_keyword
-                                }
-                                
-                                st.markdown("---")
-                                st.header("📋 Content Optimization Analysis")
-                                st.markdown(analysis)
-                                
-                                # Export options
-                                UIHelpers.show_export_options(
-                                    analysis,
-                                    {'url': content_url, 'keyword': primary_keyword},
-                                    analysis_settings,
-                                    mode='optimize_existing'
+                            # Prepare analysis settings
+                            analysis_settings = {
+                                'depth': analysis_depth,
+                                'include_schema': include_schema,
+                                'include_competitors': include_competitors and len(competitor_url_list) > 0,
+                                'mode': 'optimize_existing',
+                                'ai_search_type': ai_search_type,
+                                'variant_types': variant_types,
+                                'include_entity_mapping': include_entity_mapping,
+                                'include_cross_verification': include_cross_verification,
+                                'include_snippet_optimization': include_snippet_optimization,
+                                'include_paa_optimization': include_paa_optimization,
+                                'ai_provider': ai_provider,
+                                'model': selected_model,
+                                'analyze_readability': analyze_readability,
+                                'analyze_structure': analyze_structure,
+                                'analyze_entities': analyze_entities,
+                                'analyze_gaps': analyze_gaps,
+                                'max_topics': max_topics
+                            }
+                            
+                            # Show content overview
+                            st.markdown("---")
+                            st.subheader("📄 Content Overview")
+                            UIHelpers.display_content_metrics(content_data)
+                            
+                            # Run the analysis
+                            with st.spinner(f"🤖 Running Query Fan-Out analysis with {Config.AI_MODELS[ai_provider]['name']} ({selected_model})..."):
+                                analysis = ContentAnalyzer.analyze_existing_content(
+                                    content_data,
+                                    primary_keyword,
+                                    additional_kw_list,
+                                    competitor_url_list,
+                                    api_key,
+                                    analysis_settings
                                 )
-                    else:
-                        st.error("❌ Could not fetch content from the provided URL. Please check the URL and try again.")
+                                
+                                if analysis:
+                                    # Store and display results
+                                    st.session_state.last_analysis = {
+                                        'timestamp': datetime.now(),
+                                        'analysis': analysis,
+                                        'settings': analysis_settings,
+                                        'url': content_url,
+                                        'primary_keyword': primary_keyword
+                                    }
+                                    
+                                    st.markdown("---")
+                                    st.header("📋 Content Optimization Analysis")
+                                    st.markdown(analysis)
+                                    
+                                    # Export options
+                                    UIHelpers.show_export_options(
+                                        analysis,
+                                        {'url': content_url, 'keyword': primary_keyword},
+                                        analysis_settings,
+                                        mode='optimize_existing'
+                                    )
+                                else:
+                                    st.error("Analysis failed. Please check your API key and try again.")
+                        else:
+                            st.error("❌ Could not fetch content from the provided URL. Please check the URL and try again.")
+                    except Exception as e:
+                        st.error(f"Error during analysis: {str(e)}")
+                        st.info("Please ensure the URL is accessible and try again")
         elif not available_providers:
             st.warning("Please configure at least one API key in the sidebar")
         else:
@@ -550,3 +573,14 @@ with st.container():
             """,
             unsafe_allow_html=True
         )
+
+# Debug info (only show in development)
+if st.checkbox("Show Debug Info", value=False, key="debug"):
+    st.markdown("### Debug Information")
+    st.json({
+        "configured_providers": configured_providers if 'configured_providers' in locals() else [],
+        "selected_provider": ai_provider if 'ai_provider' in locals() else None,
+        "selected_model": selected_model if 'selected_model' in locals() else None,
+        "mode": st.session_state.mode,
+        "api_keys_configured": {k: bool(v) for k, v in st.session_state.api_keys.items()}
+    })
