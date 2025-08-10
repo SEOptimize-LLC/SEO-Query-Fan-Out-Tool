@@ -11,15 +11,61 @@ class Config:
     @staticmethod
     def get_gemini_api_key():
         """Get Gemini API key"""
-        # Try secrets first
         try:
             if 'GEMINI_API_KEY' in st.secrets:
                 return st.secrets['GEMINI_API_KEY']
         except:
             pass
-        
-        # Try environment variable
         return os.getenv('GEMINI_API_KEY')
+    
+    @staticmethod
+    def get_openai_api_key():
+        """Get OpenAI API key"""
+        try:
+            if 'OPENAI_API_KEY' in st.secrets:
+                return st.secrets['OPENAI_API_KEY']
+        except:
+            pass
+        return os.getenv('OPENAI_API_KEY')
+    
+    @staticmethod
+    def get_anthropic_api_key():
+        """Get Anthropic API key"""
+        try:
+            if 'ANTHROPIC_API_KEY' in st.secrets:
+                return st.secrets['ANTHROPIC_API_KEY']
+        except:
+            pass
+        return os.getenv('ANTHROPIC_API_KEY')
+    
+    # Model configurations
+    AI_MODELS = {
+        'gemini': {
+            'name': 'Google Gemini',
+            'models': [
+                {'id': 'gemini-1.5-flash', 'name': 'Gemini 1.5 Flash (Fast & Free)', 'description': 'Fastest, good for simple tasks'},
+                {'id': 'gemini-1.5-pro', 'name': 'Gemini 1.5 Pro', 'description': 'Best balance of speed and capability'},
+                {'id': 'gemini-exp-1206', 'name': 'Gemini Experimental 1206', 'description': 'Latest experimental model'}
+            ]
+        },
+        'openai': {
+            'name': 'OpenAI',
+            'models': [
+                {'id': 'gpt-4o', 'name': 'GPT-4o', 'description': 'Latest and fastest GPT-4'},
+                {'id': 'gpt-4o-mini', 'name': 'GPT-4o Mini', 'description': 'Smaller, faster, cheaper'},
+                {'id': 'o1-preview', 'name': 'O1 Preview (Reasoning)', 'description': 'Best for complex reasoning tasks'},
+                {'id': 'o1-mini', 'name': 'O1 Mini (Reasoning)', 'description': 'Faster reasoning model'}
+            ]
+        },
+        'anthropic': {
+            'name': 'Anthropic Claude',
+            'models': [
+                {'id': 'claude-3-5-sonnet-20241022', 'name': 'Claude 3.5 Sonnet', 'description': 'Best overall performance'},
+                {'id': 'claude-3-opus-20240229', 'name': 'Claude 3 Opus', 'description': 'Most capable, best for complex tasks'},
+                {'id': 'claude-3-haiku-20240307', 'name': 'Claude 3 Haiku', 'description': 'Fastest and most affordable'}
+            ]
+        }
+    }
     
     # Analysis defaults
     DEFAULT_MAX_QUERIES = 20
