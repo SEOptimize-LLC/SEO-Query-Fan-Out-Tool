@@ -8,61 +8,32 @@ import streamlit as st
 class Config:
     """Configuration management for the app"""
     
-    @staticmethod
-    def get_gemini_api_key():
-        """Get Gemini API key"""
-        try:
-            if 'GEMINI_API_KEY' in st.secrets:
-                return st.secrets['GEMINI_API_KEY']
-        except:
-            pass
-        return os.getenv('GEMINI_API_KEY')
-    
-    @staticmethod
-    def get_openai_api_key():
-        """Get OpenAI API key"""
-        try:
-            if 'OPENAI_API_KEY' in st.secrets:
-                return st.secrets['OPENAI_API_KEY']
-        except:
-            pass
-        return os.getenv('OPENAI_API_KEY')
-    
-    @staticmethod
-    def get_anthropic_api_key():
-        """Get Anthropic API key"""
-        try:
-            if 'ANTHROPIC_API_KEY' in st.secrets:
-                return st.secrets['ANTHROPIC_API_KEY']
-        except:
-            pass
-        return os.getenv('ANTHROPIC_API_KEY')
-    
-    # Model configurations
+    # Model configurations - focused on best reasoning/thinking models
     AI_MODELS = {
         'gemini': {
             'name': 'Google Gemini',
             'models': [
-                {'id': 'gemini-1.5-flash', 'name': 'Gemini 1.5 Flash (Fast & Free)', 'description': 'Fastest, good for simple tasks'},
-                {'id': 'gemini-1.5-pro', 'name': 'Gemini 1.5 Pro', 'description': 'Best balance of speed and capability'},
-                {'id': 'gemini-exp-1206', 'name': 'Gemini Experimental 1206', 'description': 'Latest experimental model'}
+                {'id': 'gemini-1.5-pro', 'name': 'Gemini 1.5 Pro', 'description': 'Best for complex analysis and reasoning'},
+                {'id': 'gemini-1.5-flash', 'name': 'Gemini 1.5 Flash', 'description': 'Faster, good for simpler tasks'},
+                {'id': 'gemini-exp-1206', 'name': 'Gemini Experimental', 'description': 'Latest experimental features'},
             ]
         },
         'openai': {
             'name': 'OpenAI',
             'models': [
-                {'id': 'gpt-4o', 'name': 'GPT-4o', 'description': 'Latest and fastest GPT-4'},
-                {'id': 'gpt-4o-mini', 'name': 'GPT-4o Mini', 'description': 'Smaller, faster, cheaper'},
-                {'id': 'o1-preview', 'name': 'O1 Preview (Reasoning)', 'description': 'Best for complex reasoning tasks'},
-                {'id': 'o1-mini', 'name': 'O1 Mini (Reasoning)', 'description': 'Faster reasoning model'}
+                {'id': 'o1', 'name': 'O1 (Best Reasoning)', 'description': 'Most advanced reasoning and thinking model'},
+                {'id': 'o1-preview', 'name': 'O1 Preview', 'description': 'Preview version with strong reasoning'},
+                {'id': 'o1-mini', 'name': 'O1 Mini', 'description': 'Faster reasoning model'},
+                {'id': 'gpt-4o', 'name': 'GPT-4o', 'description': 'Latest GPT-4, fast and capable'},
+                {'id': 'gpt-4o-mini', 'name': 'GPT-4o Mini', 'description': 'Smaller, faster, more affordable'},
             ]
         },
         'anthropic': {
             'name': 'Anthropic Claude',
             'models': [
-                {'id': 'claude-3-5-sonnet-20241022', 'name': 'Claude 3.5 Sonnet', 'description': 'Best overall performance'},
-                {'id': 'claude-3-opus-20240229', 'name': 'Claude 3 Opus', 'description': 'Most capable, best for complex tasks'},
-                {'id': 'claude-3-haiku-20240307', 'name': 'Claude 3 Haiku', 'description': 'Fastest and most affordable'}
+                {'id': 'claude-3-5-sonnet-20241022', 'name': 'Claude 3.5 Sonnet', 'description': 'Best overall - excellent reasoning'},
+                {'id': 'claude-3-opus-20240229', 'name': 'Claude 3 Opus', 'description': 'Most capable for complex tasks'},
+                {'id': 'claude-3-haiku-20240307', 'name': 'Claude 3 Haiku', 'description': 'Fast and efficient'},
             ]
         }
     }
