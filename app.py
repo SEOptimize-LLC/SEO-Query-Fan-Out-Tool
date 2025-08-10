@@ -10,7 +10,7 @@ import json
 
 # Import modules
 from config import Config
-from utils import QueryAnalyzer, ContentAnalyzer, UIHelpers
+from utils import QueryAnalyzer, ContentAnalyzer, UIHelpers, APIValidator
 
 # Page configuration
 st.set_page_config(
@@ -25,6 +25,12 @@ if 'analysis_history' not in st.session_state:
     st.session_state.analysis_history = []
 if 'mode' not in st.session_state:
     st.session_state.mode = 'new_content'
+if 'api_keys' not in st.session_state:
+    st.session_state.api_keys = {
+        'gemini': '',
+        'openai': '',
+        'anthropic': ''
+    }
 
 # Title and description
 st.title("🔍 Query Fan-Out Analysis Tool")
@@ -54,37 +60,125 @@ st.markdown("---")
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Gemini API Key
-    st.subheader("🤖 Gemini API Configuration")
-    gemini_api_key = Config.get_gemini_api_key()
-    if not gemini_api_key:
-        gemini_api_key = st.text_input(
-            "Gemini API Key", 
-            type="password",
-            help="Get your API key from https://makersuite.google.com/app/apikey"
-        )
-    else:
-        st.success("✅ Using Gemini API key from configuration")
-        override_key = st.text_input(
-            "Override API Key (optional)", 
-            type="password",
-            help="Enter a different API key to override the configured one"
-        )
-        if override_key:
-            gemini_api_key = override_key
+    # API Keys Section
+    st.subheader("🔑 API Keys Configuration")
     
-    # Model selection
-    gemini_model = st.selectbox(
-        "Gemini Model",
-        options=["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"],
-        index=0,
-        help="Select which Gemini model to use. Flash is faster and cheaper, Pro is more capable."
-    )
+    with st.expander("API Keys Setup", expanded=True):
+        st.markdown("Enter API keys for the providers you want to use:")
+        
+        # Gemini API Key
+        st.markdown("**Google Gemini**")
+        gemini_key = st.text_input(
+            "Gemini API Key",
+            value=st.session_state.api_keys.get('gemini', ''),
+            type="password",
+            help="Get from: https://makersuite.google.com/app/apikey",
+            key="gemini_key_input"
+        )
+        if gemini_key:
+            st.session_state.api_keys['gemini'] = gemini_key
+            if st.button("Validate", key="validate_gemini"):
+                with st.spinner("Validating..."):
+                    is_valid, message = APIValidator.validate_gemini_key(gemini_key)
+                    if is_valid:
+                        st.success(message)
+                    else:
+                        st.error(message)
+        
+        st.markdown("---")
+        
+        # OpenAI API Key
+        st.markdown("**OpenAI**")
+        openai_key = st.text_input(
+            "OpenAI API Key",
+            value=st.session_state.api_keys.get('openai', ''),
+            type="password",
+            help="Get from: https://platform.openai.com/api-keys",
+            key="openai_key_input"
+        )
+        if openai_key:
+            st.session_state.api_keys['openai'] = openai_key
+            if st.button("Validate", key="validate_openai"):
+                with st.spinner("Validating..."):
+                    is_valid, message = APIValidator.validate_openai_key(openai_key)
+                    if is_valid:
+                        st.success(message)
+                    else:
+                        st.error(message)
+        
+        st.markdown("---")
+        
+        # Anthropic API Key
+        st.markdown("**Anthropic Claude**")
+        anthropic_key = st.text_input(
+            "Anthropic API Key",
+            value=st.session_state.api_keys.get('anthropic', ''),
+            type="password",
+            help="Get from: https://console.anthropic.com/settings/keys",
+            key="anthropic_key_input"
+        )
+        if anthropic_key:
+            st.session_state.api_keys['anthropic'] = anthropic_key
+            if st.button("Validate", key="validate_anthropic"):
+                with st.spinner("Validating..."):
+                    is_valid, message = APIValidator.validate_anthropic_key(anthropic_key)
+                    if is_valid:
+                        st.success(message)
+                    else:
+                        st.error(message)
+    
+    # Show which providers are configured
+    configured_providers = [p for p, k in st.session_state.api_keys.items() if k]
+    if configured_providers:
+        st.success(f"✅ Configured: {', '.join(configured_providers)}")
+    else:
+        st.warning("⚠️ No API keys configured yet")
+    
+    st.markdown("---")
+    
+    # Model Selection
+    st.subheader("🤖 AI Model Selection")
+    
+    # Only show providers that have API keys configured
+    available_providers = [p for p, k in st.session_state.api_keys.items() if k]
+    
+    if not available_providers:
+        st.warning("Please configure at least one API key above")
+        ai_provider = None
+        selected_model = None
+    else:
+        ai_provider = st.selectbox(
+            "Select AI Provider",
+            options=available_providers,
+            format_func=lambda x: Config.AI_MODELS[x]['name'],
+            help="Choose from your configured providers"
+        )
+        
+        # Model selection based on provider
+        selected_model_info = st.selectbox(
+            "Select Model",
+            options=Config.AI_MODELS[ai_provider]['models'],
+            format_func=lambda x: x['name'],
+            help="Choose the specific model to use"
+        )
+        
+        selected_model = selected_model_info['id']
+        st.caption(f"ℹ️ {selected_model_info['description']}")
+        
+        # Show model-specific tips
+        if ai_provider == 'openai' and 'o1' in selected_model:
+            st.info("💡 O1 models excel at complex reasoning and multi-step analysis")
+        elif ai_provider == 'anthropic' and 'opus' in selected_model:
+            st.info("💡 Claude Opus provides the most comprehensive analysis")
+        elif ai_provider == 'gemini' and 'pro' in selected_model:
+            st.info("💡 Gemini Pro offers excellent balance of speed and quality")
+    
+    st.markdown("---")
     
     # Analysis settings
     st.subheader("📊 Analysis Settings")
     
-    # Query Fan-Out Settings based on the blog methodology
+    # Query Fan-Out Configuration
     st.subheader("🎯 Query Fan-Out Configuration")
     
     # Query Variant Types to include
@@ -130,7 +224,6 @@ with st.sidebar:
             value=20
         )
     else:
-        # For existing content, we analyze all detected topics
         max_topics = st.slider(
             "Max topics to analyze", 
             min_value=5, 
@@ -231,59 +324,70 @@ entity-based content optimization""",
                     st.write(f"... and {len(queries_list) - 10} more")
     
     # Analysis button for new content mode
-    if st.button("🚀 Run Query Fan-Out Analysis", type="primary", disabled=not gemini_api_key):
-        if queries_list:
-            # Prepare analysis settings
-            analysis_settings = {
-                'max_queries': min(max_queries, len(queries_list)),
-                'depth': analysis_depth,
-                'include_schema': include_schema,
-                'include_competitors': include_competitors,
-                'mode': 'new_content',
-                'ai_search_type': ai_search_type,
-                'variant_types': variant_types,
-                'include_entity_mapping': include_entity_mapping,
-                'include_cross_verification': include_cross_verification,
-                'include_snippet_optimization': include_snippet_optimization,
-                'include_paa_optimization': include_paa_optimization,
-                'gemini_model': gemini_model,
-                'target_audience': target_audience,
-                'content_type': content_type
-            }
+    button_disabled = not available_providers or not queries_list
+    
+    if st.button("🚀 Run Query Fan-Out Analysis", type="primary", disabled=button_disabled):
+        if queries_list and ai_provider:
+            # Get the API key for selected provider
+            api_key = st.session_state.api_keys.get(ai_provider)
             
-            # Create DataFrame
-            queries_df = pd.DataFrame({
-                'query': queries_list[:max_queries],
-                'priority': range(1, min(max_queries + 1, len(queries_list) + 1))
-            })
-            
-            with st.spinner("🤖 Analyzing queries with Gemini AI..."):
-                analysis = QueryAnalyzer.analyze_query_fanout_new_content(
-                    queries_df,
-                    gemini_api_key,
-                    analysis_settings
-                )
+            if not api_key:
+                st.error(f"No API key configured for {Config.AI_MODELS[ai_provider]['name']}")
+            else:
+                # Prepare analysis settings
+                analysis_settings = {
+                    'max_queries': min(max_queries, len(queries_list)),
+                    'depth': analysis_depth,
+                    'include_schema': include_schema,
+                    'include_competitors': include_competitors,
+                    'mode': 'new_content',
+                    'ai_search_type': ai_search_type,
+                    'variant_types': variant_types,
+                    'include_entity_mapping': include_entity_mapping,
+                    'include_cross_verification': include_cross_verification,
+                    'include_snippet_optimization': include_snippet_optimization,
+                    'include_paa_optimization': include_paa_optimization,
+                    'ai_provider': ai_provider,
+                    'model': selected_model,
+                    'target_audience': target_audience,
+                    'content_type': content_type
+                }
                 
-                if analysis:
-                    # Store and display results
-                    st.session_state.last_analysis = {
-                        'timestamp': datetime.now(),
-                        'analysis': analysis,
-                        'settings': analysis_settings,
-                        'queries': queries_list
-                    }
-                    
-                    st.markdown("---")
-                    st.header("📋 Query Fan-Out Analysis Results")
-                    st.markdown(analysis)
-                    
-                    # Export options
-                    UIHelpers.show_export_options(
-                        analysis, 
-                        queries_list, 
-                        analysis_settings, 
-                        mode='new_content'
+                # Create DataFrame
+                queries_df = pd.DataFrame({
+                    'query': queries_list[:max_queries],
+                    'priority': range(1, min(max_queries + 1, len(queries_list) + 1))
+                })
+                
+                with st.spinner(f"🤖 Analyzing queries with {Config.AI_MODELS[ai_provider]['name']}..."):
+                    analysis = QueryAnalyzer.analyze_query_fanout_new_content(
+                        queries_df,
+                        api_key,
+                        analysis_settings
                     )
+                    
+                    if analysis:
+                        # Store and display results
+                        st.session_state.last_analysis = {
+                            'timestamp': datetime.now(),
+                            'analysis': analysis,
+                            'settings': analysis_settings,
+                            'queries': queries_list
+                        }
+                        
+                        st.markdown("---")
+                        st.header("📋 Query Fan-Out Analysis Results")
+                        st.markdown(analysis)
+                        
+                        # Export options
+                        UIHelpers.show_export_options(
+                            analysis, 
+                            queries_list, 
+                            analysis_settings, 
+                            mode='new_content'
+                        )
+        elif not available_providers:
+            st.warning("Please configure at least one API key in the sidebar")
         else:
             st.warning("Please enter at least one query to analyze")
 
@@ -345,76 +449,87 @@ elif st.session_state.mode == 'optimize_existing':
             """)
     
     # Analysis button for existing content
-    if st.button("🔍 Analyze & Optimize Content", type="primary", disabled=not gemini_api_key):
-        if content_url and primary_keyword:
-            with st.spinner("📥 Fetching and analyzing content..."):
-                # Fetch the content
-                content_data = ContentAnalyzer.fetch_content(content_url)
-                
-                if content_data:
-                    # Extract additional keywords list
-                    additional_kw_list = [kw.strip() for kw in additional_keywords.split('\n') if kw.strip()]
-                    competitor_url_list = [url.strip() for url in competitor_urls.split('\n') if url.strip()]
+    button_disabled = not available_providers or not (content_url and primary_keyword)
+    
+    if st.button("🔍 Analyze & Optimize Content", type="primary", disabled=button_disabled):
+        if content_url and primary_keyword and ai_provider:
+            # Get the API key for selected provider
+            api_key = st.session_state.api_keys.get(ai_provider)
+            
+            if not api_key:
+                st.error(f"No API key configured for {Config.AI_MODELS[ai_provider]['name']}")
+            else:
+                with st.spinner("📥 Fetching and analyzing content..."):
+                    # Fetch the content
+                    content_data = ContentAnalyzer.fetch_content(content_url)
                     
-                    # Prepare analysis settings
-                    analysis_settings = {
-                        'depth': analysis_depth,
-                        'include_schema': include_schema,
-                        'include_competitors': include_competitors and len(competitor_url_list) > 0,
-                        'mode': 'optimize_existing',
-                        'ai_search_type': ai_search_type,
-                        'variant_types': variant_types,
-                        'include_entity_mapping': include_entity_mapping,
-                        'include_cross_verification': include_cross_verification,
-                        'include_snippet_optimization': include_snippet_optimization,
-                        'include_paa_optimization': include_paa_optimization,
-                        'gemini_model': gemini_model,
-                        'analyze_readability': analyze_readability,
-                        'analyze_structure': analyze_structure,
-                        'analyze_entities': analyze_entities,
-                        'analyze_gaps': analyze_gaps,
-                        'max_topics': max_topics
-                    }
-                    
-                    # Show content overview
-                    st.markdown("---")
-                    st.subheader("📄 Content Overview")
-                    UIHelpers.display_content_metrics(content_data)
-                    
-                    # Run the analysis
-                    with st.spinner("🤖 Running Query Fan-Out analysis on your content..."):
-                        analysis = ContentAnalyzer.analyze_existing_content(
-                            content_data,
-                            primary_keyword,
-                            additional_kw_list,
-                            competitor_url_list,
-                            gemini_api_key,
-                            analysis_settings
-                        )
+                    if content_data:
+                        # Extract additional keywords list
+                        additional_kw_list = [kw.strip() for kw in additional_keywords.split('\n') if kw.strip()]
+                        competitor_url_list = [url.strip() for url in competitor_urls.split('\n') if url.strip()]
                         
-                        if analysis:
-                            # Store and display results
-                            st.session_state.last_analysis = {
-                                'timestamp': datetime.now(),
-                                'analysis': analysis,
-                                'settings': analysis_settings,
-                                'url': content_url,
-                                'primary_keyword': primary_keyword
-                            }
-                            
-                            st.markdown("---")
-                            st.header("📋 Content Optimization Analysis")
-                            st.markdown(analysis)
-                            
-                            # Export options
-                            UIHelpers.show_export_options(
-                                analysis,
-                                {'url': content_url, 'keyword': primary_keyword},
-                                analysis_settings,
-                                mode='optimize_existing'
+                        # Prepare analysis settings
+                        analysis_settings = {
+                            'depth': analysis_depth,
+                            'include_schema': include_schema,
+                            'include_competitors': include_competitors and len(competitor_url_list) > 0,
+                            'mode': 'optimize_existing',
+                            'ai_search_type': ai_search_type,
+                            'variant_types': variant_types,
+                            'include_entity_mapping': include_entity_mapping,
+                            'include_cross_verification': include_cross_verification,
+                            'include_snippet_optimization': include_snippet_optimization,
+                            'include_paa_optimization': include_paa_optimization,
+                            'ai_provider': ai_provider,
+                            'model': selected_model,
+                            'analyze_readability': analyze_readability,
+                            'analyze_structure': analyze_structure,
+                            'analyze_entities': analyze_entities,
+                            'analyze_gaps': analyze_gaps,
+                            'max_topics': max_topics
+                        }
+                        
+                        # Show content overview
+                        st.markdown("---")
+                        st.subheader("📄 Content Overview")
+                        UIHelpers.display_content_metrics(content_data)
+                        
+                        # Run the analysis
+                        with st.spinner(f"🤖 Running Query Fan-Out analysis with {Config.AI_MODELS[ai_provider]['name']}..."):
+                            analysis = ContentAnalyzer.analyze_existing_content(
+                                content_data,
+                                primary_keyword,
+                                additional_kw_list,
+                                competitor_url_list,
+                                api_key,
+                                analysis_settings
                             )
-                else:
-                    st.error("❌ Could not fetch content from the provided URL. Please check the URL and try again.")
+                            
+                            if analysis:
+                                # Store and display results
+                                st.session_state.last_analysis = {
+                                    'timestamp': datetime.now(),
+                                    'analysis': analysis,
+                                    'settings': analysis_settings,
+                                    'url': content_url,
+                                    'primary_keyword': primary_keyword
+                                }
+                                
+                                st.markdown("---")
+                                st.header("📋 Content Optimization Analysis")
+                                st.markdown(analysis)
+                                
+                                # Export options
+                                UIHelpers.show_export_options(
+                                    analysis,
+                                    {'url': content_url, 'keyword': primary_keyword},
+                                    analysis_settings,
+                                    mode='optimize_existing'
+                                )
+                    else:
+                        st.error("❌ Could not fetch content from the provided URL. Please check the URL and try again.")
+        elif not available_providers:
+            st.warning("Please configure at least one API key in the sidebar")
         else:
             st.warning("Please provide both a URL and primary keyword to analyze")
 
