@@ -26,10 +26,11 @@ if 'analysis_history' not in st.session_state:
 if 'mode' not in st.session_state:
     st.session_state.mode = 'new_content'
 if 'api_keys' not in st.session_state:
+    # Load API keys from secrets/environment on first run
     st.session_state.api_keys = {
-        'gemini': '',
-        'openai': '',
-        'anthropic': ''
+        'gemini': Config.get_gemini_api_key(),
+        'openai': Config.get_openai_api_key(),
+        'anthropic': Config.get_anthropic_api_key()
     }
 
 # Title and description
