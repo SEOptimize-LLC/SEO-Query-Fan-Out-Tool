@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime
 import re
 from urllib.parse import urlparse
+import json
 
 # Optional imports with error handling
 try:
@@ -14,7 +15,18 @@ try:
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    st.warning("Google Generative AI not installed. Please run: pip install google-generativeai")
+
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+try:
+    import anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
 
 try:
     import requests
@@ -27,6 +39,203 @@ except ImportError:
 from config import Config
 
 
+class APIValidator:
+    """Validate API keys for different providers"""
+    
+    @staticmethod
+    def validate_gemini_key(api_key):
+        """Validate Gemini API key"""
+        if not api_key:
+            return False, "No API key provided"
+        
+        # Check basic format
+        if not api_key.startswith('AIza'):
+            return False, "Invalid key format. Gemini keys should start with 'AIza'"
+        
+        if len(api_key) < 30:
+            return False, "Key appears to be incomplete"
+        
+        # Try to make a simple API call
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            
+            # Try to list models (lightweight call)
+            models = genai.list_models()
+            model_list = list(models)
+            
+            return True, f"✅ Valid key! Access to {len(model_list)} models confirmed"
+        except Exception as e:
+            error_str = str(e)
+            
+            if "API_KEY_INVALID" in error_str:
+                return False, "❌ Invalid API key. Please check your key at https://makersuite.google.com/app/apikey"
+            elif "PERMISSION_DENIED" in error_str:
+                return False, "❌ API key valid but lacks permissions. Enable the Generative Language API in Google Cloud Console"
+            elif "quota" in error_str.lower():
+                return False, "❌ API quota exceeded. Check your usage limits"
+            else:
+                return False, f"❌ Validation failed: {error_str[:100]}"
+    
+    @staticmethod
+    def validate_openai_key(api_key):
+        """Validate OpenAI API key"""
+        if not api_key:
+            return False, "No API key provided"
+        
+        if not api_key.startswith('sk-'):
+            return False, "Invalid key format. OpenAI keys should start with 'sk-'"
+        
+        try:
+            import openai
+            client = openai.OpenAI(api_key=api_key)
+            
+            # Try to list models
+            models = client.models.list()
+            model_count = len(list(models))
+            
+            return True, f"✅ Valid key! Access to OpenAI models confirmed"
+        except Exception as e:
+            error_str = str(e)
+            
+            if "incorrect api key" in error_str.lower() or "invalid" in error_str.lower():
+                return False, "❌ Invalid API key. Get a new one at https://platform.openai.com/api-keys"
+            elif "quota" in error_str.lower():
+                return False, "❌ API quota exceeded or no credits available"
+            else:
+                return False, f"❌ Validation failed: {error_str[:100]}"
+    
+    @staticmethod
+    def validate_anthropic_key(api_key):
+        """Validate Anthropic API key"""
+        if not api_key:
+            return False, "No API key provided"
+        
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            
+            # Try a minimal API call
+            response = client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=10,
+                messages=[{"role": "user", "content": "Hi"}]
+            )
+            
+            return True, "✅ Valid key! Claude API access confirmed"
+        except Exception as e:
+            error_str = str(e)
+            
+            if "invalid" in error_str.lower() or "unauthorized" in error_str.lower():
+                return False, "❌ Invalid API key. Get a new one at https://console.anthropic.com/settings/keys"
+            elif "credit" in error_str.lower() or "balance" in error_str.lower():
+                return False, "❌ No credits available. Add credits to your Anthropic account"
+            else:
+                return False, f"❌ Validation failed: {error_str[:100]}"
+
+
+class AIProvider:
+    """Handle different AI provider integrations"""
+    
+    @staticmethod
+    def generate_content(prompt, api_key, settings):
+        """Generate content using the selected AI provider"""
+        provider = settings.get('ai_provider', 'gemini')
+        model = settings.get('model', 'gemini-1.5-flash')
+        
+        if provider == 'gemini':
+            return AIProvider._generate_gemini(prompt, api_key, model)
+        elif provider == 'openai':
+            return AIProvider._generate_openai(prompt, api_key, model)
+        elif provider == 'anthropic':
+            return AIProvider._generate_anthropic(prompt, api_key, model)
+        else:
+            st.error(f"Unknown AI provider: {provider}")
+            return None
+    
+    @staticmethod
+    def _generate_gemini(prompt, api_key, model):
+        """Generate content using Google Gemini"""
+        if not GEMINI_AVAILABLE:
+            st.error("Google Generative AI not installed. Run: pip install google-generativeai")
+            return None
+        
+        try:
+            genai.configure(api_key=api_key)
+            gemini_model = genai.GenerativeModel(model)
+            response = gemini_model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            st.error(f"Gemini API error: {str(e)}")
+            return None
+    
+    @staticmethod
+    def _generate_openai(prompt, api_key, model):
+        """Generate content using OpenAI"""
+        if not OPENAI_AVAILABLE:
+            st.error("OpenAI library not installed. Run: pip install openai")
+            return None
+        
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            
+            # Special handling for O1 models (reasoning models)
+            if 'o1' in model:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=1,  # O1 models work best with temperature=1
+                    max_completion_tokens=32000  # O1 models support more tokens
+                )
+            else:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert in Google's Query Fan-Out system and SEO optimization."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=4000
+                )
+            
+            return response.choices[0].message.content
+        except Exception as e:
+            st.error(f"OpenAI API error: {str(e)}")
+            if "api_key" in str(e).lower():
+                st.error("Please check your OpenAI API key")
+            return None
+    
+    @staticmethod
+    def _generate_anthropic(prompt, api_key, model):
+        """Generate content using Anthropic Claude"""
+        if not ANTHROPIC_AVAILABLE:
+            st.error("Anthropic library not installed. Run: pip install anthropic")
+            return None
+        
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            
+            response = client.messages.create(
+                model=model,
+                max_tokens=4000,
+                temperature=0.7,
+                system="You are an expert in Google's Query Fan-Out system and SEO optimization. Provide detailed, actionable recommendations.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            # Extract text from Claude's response
+            return response.content[0].text
+        except Exception as e:
+            st.error(f"Anthropic API error: {str(e)}")
+            if "api_key" in str(e).lower():
+                st.error("Please check your Anthropic API key")
+            return None
+
+
 class QueryAnalyzer:
     """Handle query analysis and fan-out predictions"""
     
@@ -35,29 +244,16 @@ class QueryAnalyzer:
         """
         Perform Query Fan-Out analysis for new content planning
         """
-        if not GEMINI_AVAILABLE:
-            st.error("Google Generative AI library is not installed")
-            return None
-            
         if not api_key:
-            st.error("Please provide a Gemini API key")
+            st.error("Please provide an API key")
             return None
-        
-        # Configure Gemini
-        genai.configure(api_key=api_key)
-        model_name = analysis_settings.get('gemini_model', 'gemini-1.5-flash')
-        model = genai.GenerativeModel(model_name)
         
         # Build the analysis prompt
         queries_list = queries_df['query'].tolist()
         prompt = QueryAnalyzer._build_new_content_prompt(queries_list, analysis_settings)
         
-        try:
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            st.error(f"Error during Gemini analysis: {str(e)}")
-            return None
+        # Generate content using selected provider
+        return AIProvider.generate_content(prompt, api_key, analysis_settings)
     
     @staticmethod
     def _build_new_content_prompt(queries_list, settings):
@@ -124,6 +320,14 @@ class QueryAnalyzer:
                 prompt += """
         - **Entailment Queries**: List 2-3 logically implied questions
         """
+            elif vtype == 'canonicalization':
+                prompt += """
+        - **Canonicalization Queries**: List 2-3 standardized versions
+        """
+            elif vtype == 'clarification':
+                prompt += """
+        - **Clarification Queries**: List 2-3 questions to clarify intent
+        """
         
         prompt += """
         
@@ -173,6 +377,16 @@ class QueryAnalyzer:
         - **Semantic Markup**: Schema.org recommendations
         """
         
+        if settings.get('include_cross_verification'):
+            prompt += """
+        
+        ## 7. CROSS-VERIFICATION STRATEGY
+        - **Fact Verification**: Key facts to verify and cite
+        - **Contradictory Information**: How to handle conflicting data
+        - **Authority Signals**: Sources and citations to include
+        - **Trust Indicators**: Elements that build credibility
+        """
+        
         if settings.get('include_schema'):
             prompt += """
         
@@ -181,6 +395,16 @@ class QueryAnalyzer:
         - **FAQ Schema**: Questions and answers
         - **HowTo Schema**: Step-by-step processes
         - **Article/BlogPosting**: Metadata requirements
+        """
+        
+        if settings.get('include_competitors'):
+            prompt += """
+        
+        ## 9. COMPETITIVE DIFFERENTIATION
+        - **Content Gaps**: What competitors likely miss
+        - **Unique Angles**: Fresh perspectives to explore
+        - **10x Content**: How to create superior content
+        - **Differentiation Strategy**: Unique value propositions
         """
         
         prompt += """
@@ -357,7 +581,6 @@ class ContentAnalyzer:
         structured_data = []
         for script in soup.find_all('script', type='application/ld+json'):
             try:
-                import json
                 data = json.loads(script.string)
                 structured_data.append(data)
             except:
@@ -370,18 +593,9 @@ class ContentAnalyzer:
         """
         Analyze existing content using Query Fan-Out methodology
         """
-        if not GEMINI_AVAILABLE:
-            st.error("Google Generative AI library is not installed")
-            return None
-            
         if not api_key:
-            st.error("Please provide a Gemini API key")
+            st.error("Please provide an API key")
             return None
-        
-        # Configure Gemini
-        genai.configure(api_key=api_key)
-        model_name = analysis_settings.get('gemini_model', 'gemini-1.5-flash')
-        model = genai.GenerativeModel(model_name)
         
         # Fetch competitor content if provided
         competitor_data = []
@@ -400,12 +614,8 @@ class ContentAnalyzer:
             analysis_settings
         )
         
-        try:
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            st.error(f"Error during Gemini analysis: {str(e)}")
-            return None
+        # Generate content using selected provider
+        return AIProvider.generate_content(prompt, api_key, analysis_settings)
     
     @staticmethod
     def _build_optimization_prompt(content_data, primary_keyword, additional_keywords, 
@@ -451,6 +661,9 @@ class ContentAnalyzer:
         OPTIMIZATION TARGET: {settings.get('ai_search_type', 'ai_mode').replace('_', ' ').title()}
         
         Please provide a comprehensive optimization analysis with specific, actionable recommendations.
+        Focus on practical changes that align with Google's Query Fan-Out system.
+        
+        Include specific examples, rewrite suggestions, and prioritized action items.
         """
         
         return prompt
@@ -513,6 +726,8 @@ class UIHelpers:
             if mode == 'new_content':
                 report = f"""# Query Fan-Out Analysis Report - New Content Planning
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+AI Provider: {settings.get('ai_provider', 'Unknown')}
+Model: {settings.get('model', 'Unknown')}
 
 ## Target Queries
 {chr(10).join(f"- {q}" for q in data[:settings.get('max_queries', 20)])}
@@ -531,6 +746,8 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 report = f"""# Query Fan-Out Analysis Report - Content Optimization
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+AI Provider: {settings.get('ai_provider', 'Unknown')}
+Model: {settings.get('model', 'Unknown')}
 
 ## Content Details
 - URL: {data.get('url')}
@@ -556,10 +773,11 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         
         with col3:
             # JSON export
-            import json
             json_data = {
                 'mode': mode,
                 'timestamp': datetime.now().isoformat(),
+                'ai_provider': settings.get('ai_provider'),
+                'model': settings.get('model'),
                 'data': data if isinstance(data, dict) else {'queries': data},
                 'settings': settings,
                 'analysis': analysis
