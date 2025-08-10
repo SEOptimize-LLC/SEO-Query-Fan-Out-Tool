@@ -1,62 +1,49 @@
-# SEO Query Fan-Out Analysis Tool
+# Query Fan-Out Analysis Tool
 
-A powerful Streamlit application that analyzes Google Search Console data using the Query Fan-Out methodology to optimize content for Google's AI Mode search.
+A powerful Streamlit application that uses Google's Query Fan-Out methodology to help you optimize content for AI-powered search results and Google AI Overviews.
 
 ## 🚀 Features
 
-- **OAuth 2.0 Authentication**: Secure Google account authentication (no API keys needed from users)
-- **Google Search Console Integration**: Direct access to your search query data
-- **Query Fan-Out Analysis**: AI-powered analysis using Google's Gemini to predict query expansions
-- **Content Gap Identification**: Discover missing content opportunities
-- **AI Mode Optimization**: Recommendations specifically for Google's AI-powered search
-- **Export Functionality**: Download analysis reports in Markdown format
+### Two Analysis Modes:
+
+1. **New Content Planning** 
+   - Generate query variants using Google's Fan-Out system
+   - Plan comprehensive content strategies
+   - Identify content gaps before writing
+   - Create topic clusters and content hierarchies
+
+2. **Optimize Existing Content**
+   - Analyze any URL for optimization opportunities
+   - Compare against target keywords
+   - Identify missing query coverage
+   - Get specific rewrite recommendations
+   - Competitive analysis against other URLs
+
+## 🎯 Query Fan-Out Methodology
+
+Based on [Google's Query Fan-Out System](https://dejan.ai/blog/googles-query-fan-out-system-a-technical-overview/), this tool generates 7 types of query variants:
+
+- **Equivalent Queries** - Alternative ways to ask the same question
+- **Follow-up Queries** - Logical next questions
+- **Generalization Queries** - Broader topic versions
+- **Canonicalization Queries** - Standardized search terms
+- **Entailment Queries** - Logically implied questions
+- **Specification Queries** - More detailed versions
+- **Clarification Queries** - Intent clarification
 
 ## 🛠️ Setup Instructions
 
-### 1. Google Cloud Console Setup
+### Prerequisites
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the **Google Search Console API**:
-   - Navigate to "APIs & Services" > "Library"
-   - Search for "Google Search Console API"
-   - Click "Enable"
+- Python 3.8 or higher
+- Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 
-### 2. Create OAuth 2.0 Credentials
-
-1. Go to "APIs & Services" > "Credentials"
-2. Click "Create Credentials" > "OAuth 2.0 Client ID"
-3. Configure the consent screen if prompted
-4. Choose "Web application" as the application type
-5. Add authorized redirect URIs:
-   - For local testing: `http://localhost:8501`
-   - For Streamlit Cloud: `https://your-app-name.streamlit.app`
-6. Download the credentials JSON file
-
-### 3. Get Gemini API Key
-
-1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Save it securely
-
-### 4. Deploy on Streamlit Cloud
-
-1. Fork or clone this repository
-2. Connect your GitHub repo to Streamlit Cloud
-3. Add secrets in Streamlit Cloud dashboard:
-   ```toml
-   GOOGLE_CLIENT_ID = "your-client-id.apps.googleusercontent.com"
-   GOOGLE_CLIENT_SECRET = "your-client-secret"
-   REDIRECT_URI = "https://your-app-name.streamlit.app"
-   GEMINI_API_KEY = "your-gemini-api-key"
-   ```
-
-### 5. Local Development
+### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/SEOptimize-LLC/SEO-Query-Fan-Out-Tool.git
-   cd SEO-Query-Fan-Out-Tool
+   git clone https://github.com/yourusername/query-fanout-tool.git
+   cd query-fanout-tool
    ```
 
 2. Install dependencies:
@@ -64,32 +51,80 @@ A powerful Streamlit application that analyzes Google Search Console data using 
    pip install -r requirements.txt
    ```
 
-3. Create `.streamlit/secrets.toml` file with your credentials
-
-4. Run the app:
+3. Set up your Gemini API key:
+   
+   **Option 1: Environment Variable**
    ```bash
-   streamlit run streamlit_app.py
+   export GEMINI_API_KEY="your-api-key-here"
+   ```
+   
+   **Option 2: Streamlit Secrets**
+   Create `.streamlit/secrets.toml`:
+   ```toml
+   GEMINI_API_KEY = "your-api-key-here"
    ```
 
-## 📊 How It Works
+4. Run the application:
+   ```bash
+   streamlit run app.py
+   ```
 
-1. **Authentication**: Users authenticate with their Google account
-2. **Property Selection**: Choose from verified Google Search Console properties
-3. **Data Fetching**: Retrieve search query data for analysis
-4. **Query Fan-Out Analysis**: AI analyzes queries to predict:
-   - Sub-queries Google AI might generate
-   - Content gaps and opportunities
-   - Semantic relationships between queries
-5. **Recommendations**: Get actionable content optimization suggestions
+## 📊 How to Use
 
-## 🔍 Query Fan-Out Methodology
+### For New Content Planning:
 
-Query Fan-Out is Google's approach to AI-powered search where:
-- A single query is expanded into multiple related sub-queries
-- Content is evaluated at the passage level
-- Semantic coverage matters more than keyword density
+1. Select "New Content Planning" mode
+2. Enter your target queries (one per line)
+3. Configure analysis settings:
+   - Choose query variant types to generate
+   - Select optimization target (AI Overviews, AI Mode, or Both)
+   - Set analysis depth
+4. Click "Run Query Fan-Out Analysis"
+5. Review recommendations and download report
 
-This tool helps you understand and optimize for this new search paradigm.
+### For Existing Content Optimization:
+
+1. Select "Optimize Existing Content" mode
+2. Enter your content URL
+3. Provide primary keyword and additional keywords
+4. Optionally add competitor URLs for comparison
+5. Configure analysis options
+6. Click "Analyze & Optimize Content"
+7. Implement the specific recommendations provided
+
+## 🎨 Configuration Options
+
+### Analysis Settings:
+- **Gemini Model**: Choose between Flash (faster) or Pro (more capable)
+- **Analysis Depth**: Basic, Standard, or Comprehensive
+- **Optimization Target**: 
+  - AI Overviews (quick answers)
+  - AI Mode (complex query fan-out)
+  - Both (comprehensive optimization)
+
+### Advanced Features:
+- Entity relationship mapping
+- Cross-variant verification
+- Schema markup recommendations
+- Competitive analysis
+- Snippet optimization
+- People Also Ask optimization
+
+## 📋 Output Reports
+
+The tool provides detailed reports including:
+
+- Query variant generation for all selected types
+- Content architecture recommendations
+- Specific optimization actions (immediate, short-term, long-term)
+- Content rewrite examples
+- Schema markup suggestions
+- Success metrics and KPIs
+
+Reports can be exported in:
+- Markdown format (for documentation)
+- JSON format (for programmatic use)
+- Full report format (comprehensive analysis)
 
 ## 🤝 Contributing
 
@@ -103,8 +138,40 @@ This project is licensed under the MIT License.
 
 - Built with [Streamlit](https://streamlit.io/)
 - Powered by [Google's Gemini AI](https://deepmind.google/technologies/gemini/)
-- Inspired by the SEO community's research on AI Mode optimization
+- Based on [Google's Query Fan-Out System research](https://dejan.ai/blog/googles-query-fan-out-system-a-technical-overview/)
+
+## 💡 Tips for Best Results
+
+### New Content Planning:
+- Start with 5-10 core queries
+- Include both broad and specific queries
+- Consider user intent variations
+- Think about the customer journey
+
+### Content Optimization:
+- Use your main target keyword
+- Include 3-5 related keywords
+- Add 2-3 competitor URLs for comparison
+- Ensure URLs are publicly accessible
+- Review all recommendations before implementing
+
+## 🐛 Troubleshooting
+
+**Content fetching fails:**
+- Check if the URL is publicly accessible
+- Verify the site doesn't block web scrapers
+- Try a different URL from the same domain
+
+**Gemini API errors:**
+- Verify your API key is valid
+- Check API quotas and limits
+- Try using a different model (Flash vs Pro)
+
+**Analysis takes too long:**
+- Reduce analysis depth
+- Use fewer query variants
+- Choose Flash model for faster processing
 
 ---
 
-**Note**: This tool requires valid Google Search Console access and appropriate API credentials. Ensure you have the necessary permissions for the properties you want to analyze.
+**Note**: This tool requires a valid Gemini API key. Ensure you have the necessary API credentials before use.
