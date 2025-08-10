@@ -9,57 +9,6 @@ class Config:
     """Configuration management for the app"""
     
     @staticmethod
-    def get_redirect_uri():
-        """Get the appropriate redirect URI based on environment"""
-        # First, check if explicitly set in secrets
-        try:
-            if 'REDIRECT_URI' in st.secrets:
-                return st.secrets['REDIRECT_URI']
-        except:
-            pass
-        
-        # Check multiple environment variables that Streamlit Cloud sets
-        streamlit_cloud_indicators = [
-            'STREAMLIT_SHARING_MODE',
-            'STREAMLIT_SERVER_HEADLESS',
-            'STREAMLIT_RUNTIME_ENV'
-        ]
-        
-        # If any of these are set, we're on Streamlit Cloud
-        if any(var in os.environ for var in streamlit_cloud_indicators):
-            # Get the app name from secrets or use default
-            try:
-                app_name = st.secrets.get('APP_NAME', 'seo-query-fan-out-tool')
-            except:
-                app_name = 'seo-query-fan-out-tool'
-            
-            return f'https://{app_name}.streamlit.app'
-        
-        # Local development
-        return 'http://localhost:8501'
-    
-    @staticmethod
-    def get_google_credentials():
-        """Get Google OAuth credentials"""
-        client_id = None
-        client_secret = None
-        
-        # Try secrets first
-        try:
-            if 'GOOGLE_CLIENT_ID' in st.secrets:
-                client_id = st.secrets['GOOGLE_CLIENT_ID']
-                client_secret = st.secrets['GOOGLE_CLIENT_SECRET']
-        except:
-            pass
-        
-        # Try environment variables
-        if not client_id:
-            client_id = os.getenv('GOOGLE_CLIENT_ID')
-            client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
-        
-        return client_id, client_secret
-    
-    @staticmethod
     def get_gemini_api_key():
         """Get Gemini API key"""
         # Try secrets first
@@ -72,10 +21,25 @@ class Config:
         # Try environment variable
         return os.getenv('GEMINI_API_KEY')
     
-    # OAuth scopes
-    SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
-    
     # Analysis defaults
-    DEFAULT_DAYS_BACK = 30
-    DEFAULT_MIN_CLICKS = 5
     DEFAULT_MAX_QUERIES = 20
+    DEFAULT_MAX_TOPICS = 15
+    DEFAULT_ANALYSIS_DEPTH = "Standard"
+    
+    # Query Fan-Out Variant Types (based on Google's system)
+    VARIANT_TYPES = {
+        'equivalent': 'Alternative ways to ask the same question',
+        'follow_up': 'Logical next questions that build on the original',
+        'generalization': 'Broader versions of the specific question',
+        'canonicalization': 'Standardized or normalized versions',
+        'entailment': 'Queries that logically follow from the original',
+        'specification': 'More detailed or specific versions',
+        'clarification': 'Questions to clarify user intent'
+    }
+    
+    # Content Analysis Settings
+    MIN_CONTENT_LENGTH = 100  # Minimum words for valid content
+    MAX_CONTENT_LENGTH = 50000  # Maximum words to analyze
+    
+    # User Agent for web scraping
+    USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
