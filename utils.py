@@ -3,13 +3,27 @@ Utility functions for Query Fan-Out Analysis
 """
 
 import streamlit as st
-import google.generativeai as genai
 import pandas as pd
 from datetime import datetime
-import requests
-from bs4 import BeautifulSoup
 import re
 from urllib.parse import urlparse
+
+# Optional imports with error handling
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    st.warning("Google Generative AI not installed. Please run: pip install google-generativeai")
+
+try:
+    import requests
+    from bs4 import BeautifulSoup
+    SCRAPING_AVAILABLE = True
+except ImportError:
+    SCRAPING_AVAILABLE = False
+    st.warning("Web scraping libraries not installed. Please run: pip install requests beautifulsoup4")
+
 from config import Config
 
 
@@ -21,6 +35,10 @@ class QueryAnalyzer:
         """
         Perform Query Fan-Out analysis for new content planning
         """
+        if not GEMINI_AVAILABLE:
+            st.error("Google Generative AI library is not installed")
+            return None
+            
         if not api_key:
             st.error("Please provide a Gemini API key")
             return None
@@ -155,16 +173,6 @@ class QueryAnalyzer:
         - **Semantic Markup**: Schema.org recommendations
         """
         
-        if settings.get('include_cross_verification'):
-            prompt += """
-        
-        ## 7. CROSS-VERIFICATION STRATEGY
-        - **Fact Verification**: Key facts to verify and cite
-        - **Contradictory Information**: How to handle conflicting data
-        - **Authority Signals**: Sources and citations to include
-        - **Trust Indicators**: Elements that build credibility
-        """
-        
         if settings.get('include_schema'):
             prompt += """
         
@@ -173,16 +181,6 @@ class QueryAnalyzer:
         - **FAQ Schema**: Questions and answers
         - **HowTo Schema**: Step-by-step processes
         - **Article/BlogPosting**: Metadata requirements
-        """
-        
-        if settings.get('include_competitors'):
-            prompt += """
-        
-        ## 9. COMPETITIVE DIFFERENTIATION
-        - **Content Gaps**: What competitors likely miss
-        - **Unique Angles**: Fresh perspectives to explore
-        - **10x Content**: How to create superior content
-        - **Differentiation Strategy**: Unique value propositions
         """
         
         prompt += """
@@ -213,6 +211,10 @@ class ContentAnalyzer:
     @staticmethod
     def fetch_content(url):
         """Fetch and parse content from a URL"""
+        if not SCRAPING_AVAILABLE:
+            st.error("Web scraping libraries are not installed. Please install requests and beautifulsoup4")
+            return None
+            
         try:
             headers = {'User-Agent': Config.USER_AGENT}
             response = requests.get(url, headers=headers, timeout=10)
@@ -368,6 +370,10 @@ class ContentAnalyzer:
         """
         Analyze existing content using Query Fan-Out methodology
         """
+        if not GEMINI_AVAILABLE:
+            st.error("Google Generative AI library is not installed")
+            return None
+            
         if not api_key:
             st.error("Please provide a Gemini API key")
             return None
@@ -444,151 +450,7 @@ class ContentAnalyzer:
         
         OPTIMIZATION TARGET: {settings.get('ai_search_type', 'ai_mode').replace('_', ' ').title()}
         
-        Please provide a comprehensive optimization analysis:
-        
-        ## 1. CURRENT STATE ASSESSMENT
-        - **Content Coverage**: How well does the content cover the topic?
-        - **Query Alignment**: Does it match user search intent?
-        - **Semantic Completeness**: Missing topics or subtopics
-        - **Technical Issues**: SEO problems identified
-        
-        ## 2. QUERY FAN-OUT ANALYSIS
-        Based on the primary keyword "{primary_keyword}", generate:
-        """
-        
-        # Add variant type analysis
-        for vtype in settings.get('variant_types', ['equivalent', 'follow_up']):
-            if vtype == 'equivalent':
-                prompt += """
-        - **Equivalent Queries**: Alternative queries this content should target
-        """
-            elif vtype == 'follow_up':
-                prompt += """
-        - **Follow-up Queries**: Next questions users would ask
-        """
-            elif vtype == 'specification':
-                prompt += """
-        - **Specification Queries**: Detailed queries to cover
-        """
-        
-        prompt += """
-        
-        ## 3. CONTENT GAPS & OPPORTUNITIES
-        - **Missing Query Coverage**: Which fan-out queries aren't addressed?
-        - **Thin Content Areas**: Sections that need expansion
-        - **New Sections Needed**: Additional content to add
-        - **Entity Gaps**: Important entities not mentioned
-        """
-        
-        if settings.get('analyze_structure'):
-            prompt += """
-        
-        ## 4. STRUCTURAL OPTIMIZATION
-        - **Heading Hierarchy**: Improvements to H1-H6 structure
-        - **Content Flow**: Logical progression recommendations
-        - **Paragraph Optimization**: Length and readability
-        - **List Opportunities**: Where to use bullets/numbers
-        """
-        
-        if settings.get('analyze_readability'):
-            prompt += """
-        
-        ## 5. READABILITY & USER EXPERIENCE
-        - **Sentence Complexity**: Simplification opportunities
-        - **Technical Jargon**: Terms to explain or simplify
-        - **Scannability**: Formatting improvements
-        - **Engagement Elements**: Interactive elements to add
-        """
-        
-        if settings.get('ai_search_type') in ['ai_overviews', 'both']:
-            prompt += """
-        
-        ## 6. AI OVERVIEWS OPTIMIZATION
-        - **Direct Answer**: Add a 40-60 word answer at the top
-        - **Featured Snippet**: Format for snippet extraction
-        - **FAQ Section**: Questions and answers to add
-        - **Quick Reference**: Summary boxes or tables
-        """
-        
-        if settings.get('ai_search_type') in ['ai_mode', 'both']:
-            prompt += """
-        
-        ## 7. AI MODE OPTIMIZATION
-        - **Passage Enhancement**: Key passages to improve
-        - **Semantic Coverage**: Topics to add for completeness
-        - **Entity Markup**: Entities to define and link
-        - **Context Layers**: Progressive disclosure improvements
-        """
-        
-        if settings.get('include_entity_mapping'):
-            prompt += """
-        
-        ## 8. ENTITY OPTIMIZATION
-        - **Missing Entities**: Important entities to add
-        - **Entity Definitions**: Terms that need explanation
-        - **Relationship Mapping**: Connections to establish
-        - **Knowledge Graph**: Visual representation suggestions
-        """
-        
-        if competitor_data:
-            prompt += f"""
-        
-        ## 9. COMPETITIVE ANALYSIS
-        Comparing to {len(competitor_data)} competitor(s):
-        - **Content Length**: How does word count compare?
-        - **Topic Coverage**: What do competitors cover that you don't?
-        - **Unique Value**: What unique value can you add?
-        - **Differentiation**: How to stand out from competition
-        """
-        
-        if settings.get('include_schema'):
-            prompt += """
-        
-        ## 10. SCHEMA MARKUP RECOMMENDATIONS
-        - **Current Schema**: Analysis of existing structured data
-        - **Missing Schema**: Types to add
-        - **Schema Enhancements**: Properties to include
-        - **Implementation Priority**: Which schemas are most important
-        """
-        
-        prompt += """
-        
-        ## 11. ACTIONABLE OPTIMIZATION PLAN
-        Provide specific, implementable recommendations:
-        
-        ### IMMEDIATE FIXES (Quick Wins)
-        - Title tag optimization
-        - Meta description rewrite
-        - First paragraph enhancement
-        - Quick formatting fixes
-        
-        ### SHORT-TERM IMPROVEMENTS (1-2 weeks)
-        - Content additions (specify exact sections)
-        - Heading restructuring
-        - Internal linking improvements
-        - Image optimization
-        
-        ### LONG-TERM ENHANCEMENTS (1 month)
-        - Major content expansions
-        - New supporting content creation
-        - Comprehensive entity coverage
-        - Advanced schema implementation
-        
-        ## 12. CONTENT REWRITE EXAMPLES
-        Provide specific rewrite examples for:
-        - Opening paragraph (optimized for AI)
-        - Key sections that need improvement
-        - FAQ additions
-        - Conclusion with clear CTAs
-        
-        ## 13. SUCCESS METRICS
-        - Expected ranking improvements
-        - AI visibility indicators to monitor
-        - User engagement targets
-        - Conversion optimization goals
-        
-        Be specific, actionable, and prioritize recommendations by impact.
-        Focus on practical changes that align with Google's Query Fan-Out system.
+        Please provide a comprehensive optimization analysis with specific, actionable recommendations.
         """
         
         return prompt
