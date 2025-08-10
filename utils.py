@@ -620,7 +620,7 @@ class ContentAnalyzer:
     @staticmethod
     def _build_optimization_prompt(content_data, primary_keyword, additional_keywords, 
                                   competitor_data, settings):
-        """Build prompt for existing content optimization"""
+        """Build prompt for existing content optimization with actionable rewrites"""
         
         # Prepare content summary
         content_summary = f"""
@@ -638,16 +638,18 @@ class ContentAnalyzer:
         heading_structure = "\n".join([f"{h['level'].upper()}: {h['text']}" 
                                       for h in content_data['headings'][:20]])
         
-        # Content excerpt (first 500 words)
-        content_excerpt = ' '.join(content_data['content'].split()[:500])
+        # Content excerpt (first 1000 words for better context)
+        content_excerpt = ' '.join(content_data['content'].split()[:1000])
         
         prompt = f"""
-        You are an expert in Google's Query Fan-Out system and content optimization.
+        You are an expert content optimizer specializing in Google's Query Fan-Out system and AI Overviews optimization.
         
-        TASK: Analyze and provide optimization recommendations for existing content.
+        CRITICAL INSTRUCTION: Provide SPECIFIC, ACTIONABLE REWRITES that can be directly copy-pasted into the content. Not generic advice.
         
-        PRIMARY KEYWORD: {primary_keyword}
-        ADDITIONAL KEYWORDS: {', '.join(additional_keywords) if additional_keywords else 'None'}
+        TARGET OPTIMIZATION:
+        - Primary Keyword: {primary_keyword}
+        - Additional Keywords: {', '.join(additional_keywords) if additional_keywords else 'None'}
+        - Optimization Type: {settings.get('ai_search_type', 'ai_mode').replace('_', ' ').title()}
         
         CURRENT CONTENT ANALYSIS:
         {content_summary}
@@ -655,15 +657,229 @@ class ContentAnalyzer:
         HEADING STRUCTURE:
         {heading_structure}
         
-        CONTENT EXCERPT (First 500 words):
+        CONTENT SAMPLE (First 1000 words):
         {content_excerpt}
         
-        OPTIMIZATION TARGET: {settings.get('ai_search_type', 'ai_mode').replace('_', ' ').title()}
+        Provide the following ACTIONABLE optimization report:
         
-        Please provide a comprehensive optimization analysis with specific, actionable recommendations.
-        Focus on practical changes that align with Google's Query Fan-Out system.
+        # 📊 QUERY FAN-OUT OPTIMIZATION REPORT
         
-        Include specific examples, rewrite suggestions, and prioritized action items.
+        ## 1. 🎯 QUICK WIN: ANSWER BOX OPTIMIZATION
+        
+        ### Current Opening (if exists)
+        ```
+        [Extract and show the current opening paragraph]
+        ```
+        
+        ### OPTIMIZED REWRITE FOR AI OVERVIEW
+        ```
+        [Provide a completely rewritten opening that:
+        - Answers the primary query in the first 40-60 words
+        - Uses natural, conversational tone matching the original style
+        - Includes the primary keyword naturally
+        - Structures for featured snippet extraction]
+        ```
+        
+        ### Implementation Notes
+        - Why this works better: [Brief explanation]
+        - Expected impact: [Specific ranking/CTR improvement]
+        
+        ## 2. 🔍 QUERY VARIANT COVERAGE ANALYSIS
+        
+        Based on "{primary_keyword}", these query variants MUST be addressed:
+        
+        ### Missing Query Variants Your Content Doesn't Answer:
+        1. **[Specific query variant]** - Not covered
+        2. **[Specific query variant]** - Partially covered in [section]
+        3. **[Specific query variant]** - Not covered
+        
+        ### NEW SECTIONS TO ADD (Copy-Paste Ready)
+        
+        #### New Section 1: [Specific Heading]
+        ```markdown
+        ## [Exact Heading to Add]
+        
+        [Write 150-200 words of ready-to-use content that:
+        - Answers the specific query variant
+        - Maintains the original writing style
+        - Includes relevant entities and keywords
+        - Uses proper formatting for AI extraction]
+        ```
+        
+        #### New Section 2: [Specific Heading]
+        ```markdown
+        ## [Exact Heading to Add]
+        
+        [Write another 150-200 words of ready-to-use content]
+        ```
+        
+        ## 3. 📝 CRITICAL CONTENT REWRITES
+        
+        ### REWRITE 1: [Specific Section Name]
+        
+        **Current Version Issues:**
+        - [Specific problem 1]
+        - [Specific problem 2]
+        
+        **OPTIMIZED REWRITE:**
+        ```markdown
+        [Provide complete rewritten section that:
+        - Fixes the identified issues
+        - Adds query variant coverage
+        - Improves for AI extraction
+        - Maintains original tone and style]
+        ```
+        
+        ### REWRITE 2: [Another Section Name]
+        
+        **Current Version Issues:**
+        - [Specific problem]
+        
+        **OPTIMIZED REWRITE:**
+        ```markdown
+        [Complete rewritten section]
+        ```
+        
+        ## 4. 🏗️ STRUCTURAL IMPROVEMENTS
+        
+        ### Current Structure Problem
+        [Identify specific structural issue]
+        
+        ### EXACT RESTRUCTURING PLAN
+        ```
+        1. Move [specific section] to position 2
+        2. Combine [section X] with [section Y] under new heading: "[New Heading]"
+        3. Break up [long section] into:
+           - [New subsection 1]
+           - [New subsection 2]
+           - [New subsection 3]
+        4. Add new section after [specific location]: "[New Section Title]"
+        ```
+        
+        ## 5. 🎨 METADATA OPTIMIZATION
+        
+        ### Current Title Tag
+        ```
+        {content_data['title']}
+        ```
+        
+        ### OPTIMIZED Title Tag
+        ```
+        [New title that's exactly 50-60 characters, includes primary keyword, and encourages clicks]
+        ```
+        
+        ### Current Meta Description
+        ```
+        {content_data['meta_description']}
+        ```
+        
+        ### OPTIMIZED Meta Description
+        ```
+        [New description that's exactly 150-160 characters, includes primary keyword, has clear CTA]
+        ```
+        
+        ## 6. 📋 FAQ SECTION TO ADD (Copy-Paste Ready)
+        
+        Add this exact FAQ section to capture more query variants:
+        
+        ```markdown
+        ## Frequently Asked Questions
+        
+        ### [Question 1 that targets a specific query variant]
+        [40-60 word answer that's voice-search optimized]
+        
+        ### [Question 2 that targets another variant]
+        [40-60 word answer]
+        
+        ### [Question 3 that targets another variant]
+        [40-60 word answer]
+        
+        ### [Question 4 that targets another variant]
+        [40-60 word answer]
+        ```
+        
+        ## 7. 🔗 INTERNAL LINKING OPTIMIZATION
+        
+        ### Links to ADD:
+        1. In paragraph about [topic], add link to [URL] with anchor text "[exact anchor text]"
+        2. In section [X], add link to [URL] with anchor text "[exact anchor text]"
+        3. After [specific sentence], add: "Learn more about [anchor text](URL)"
+        
+        ### Links to REMOVE or UPDATE:
+        1. Remove link in [location] - reason: [specific reason]
+        2. Change "[current anchor]" to "[new anchor]" in [location]
+        
+        ## 8. 📊 SCHEMA MARKUP TO IMPLEMENT
+        
+        ### FAQ Schema (Copy-Paste Ready)
+        ```json
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "[Question 1]",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "[Answer 1]"
+              }
+            }
+          ]
+        }
+        ```
+        
+        ## 9. 🚀 IMPLEMENTATION PRIORITY
+        
+        ### DO TODAY (15 minutes):
+        1. [ ] Copy-paste the new opening paragraph
+        2. [ ] Update title tag and meta description
+        3. [ ] Add the FAQ section at the end
+        
+        ### DO THIS WEEK (1-2 hours):
+        1. [ ] Implement all content rewrites from Section 3
+        2. [ ] Add the new sections from Section 2
+        3. [ ] Restructure content per Section 4
+        
+        ### DO THIS MONTH:
+        1. [ ] Implement schema markup
+        2. [ ] Update internal linking
+        3. [ ] Create supporting content for query variants
+        
+        ## 10. 📈 EXPECTED RESULTS
+        
+        After implementing these SPECIFIC changes:
+        - **Week 1**: Expect improved CTR (+15-20%) from better meta tags
+        - **Week 2-4**: See featured snippet appearance for 2-3 query variants
+        - **Month 2**: Achieve page 1 rankings for additional 3-5 long-tail variants
+        - **Month 3**: Potential AI Overview inclusion for primary keyword
+        
+        ## 11. 🎯 COMPETITOR GAP ANALYSIS
+        
+        """
+        
+        if competitor_data:
+            prompt += """
+        Based on competitor analysis, here's what they have that you're missing:
+        
+        ### Content They Cover That You Don't:
+        1. [Specific topic/section]
+        2. [Specific topic/section]
+        3. [Specific topic/section]
+        
+        ### ADD THIS SECTION to compete:
+        ```markdown
+        [Write ready-to-use content section that fills the gap]
+        ```
+        """
+        
+        prompt += """
+        
+        ---
+        
+        Remember: Every suggestion above is SPECIFIC and ACTIONABLE. The user should be able to copy-paste rewrites directly into their CMS without any additional editing needed.
+        
+        Focus on maintaining the original writing style and brand voice while optimizing for Query Fan-Out and AI Overviews.
         """
         
         return prompt
